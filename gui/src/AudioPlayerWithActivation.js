@@ -10,6 +10,7 @@ const AudioPlayerWithActivation = ({ audioFilename }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [activationData, setActivationData] = useState([]);
   const [neuronIdx, setNeuronIdx] = useState('');
+  const [currentNeuronIdx, setCurrentNeuronIdx] = useState(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -67,10 +68,10 @@ const AudioPlayerWithActivation = ({ audioFilename }) => {
   }, [audioFilename]);
 
   useEffect(() => {
-    if (isInitialized && neuronIdx !== '') {
+    if (isInitialized && currentNeuronIdx !== null) {
       setIsLoading(true);
-      // Fetch activation data when neuronIdx changes and component is initialized
-      fetch(`${API_BASE_URL}/activation?neuron_idx=${neuronIdx}`)
+      // Fetch activation data when currentNeuronIdx changes and component is initialized
+      fetch(`${API_BASE_URL}/activation?neuron_idx=${currentNeuronIdx}`)
         .then(response => response.json())
         .then(data => {
           setActivationData(data.activations);
@@ -82,7 +83,7 @@ const AudioPlayerWithActivation = ({ audioFilename }) => {
           setError('Failed to fetch activation data');
         });
     }
-  }, [neuronIdx, isInitialized]);
+  }, [currentNeuronIdx, isInitialized]);
 
   useEffect(() => {
     if (wavesurfer.current && activationData.length > 0) {
@@ -128,8 +129,12 @@ const AudioPlayerWithActivation = ({ audioFilename }) => {
   const handleSubmit = (event) => {
     event.preventDefault();
     if (neuronIdx !== '') {
-      // Trigger the effect to fetch new activation data
-      setNeuronIdx(neuronIdx);
+      const idx = parseInt(neuronIdx, 10);
+      if (!isNaN(idx) && idx >= 0) {
+        setCurrentNeuronIdx(idx);
+      } else {
+        setError('Please enter a valid non-negative integer');
+      }
     }
   };
 
@@ -163,6 +168,7 @@ const AudioPlayerWithActivation = ({ audioFilename }) => {
       </form>
       {isLoading && <span className="ml-2">Loading...</span>}
       {!isInitialized && <p>Initializing...</p>}
+      {currentNeuronIdx !== null && <p className="mt-2">Current Neuron: {currentNeuronIdx}</p>}
     </div>
   );
 };
