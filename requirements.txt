@@ -4,3 +4,6 @@ whisper
 numpy==1.26.3
 natsort
 matplotlib
+# for the interactive GUI
+Flask
+Flask-CORS
