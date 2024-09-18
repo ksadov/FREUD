@@ -1,0 +1,13 @@
+{
+  "whisper_model": "tiny",
+  "layers": [
+    "encoder.blocks.2.mlp.1"
+  ],
+  "splits": [
+    "train-other-500"
+  ],
+  "batch_size": 160,
+  "data_path": "/home/ksadov/whisper_sae_dataset",
+  "device": "cuda",
+  "out_folder_prefix": "tiny_mlp_activations"
+}

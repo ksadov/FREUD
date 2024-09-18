@@ -1,0 +1,6 @@
+jaxtyping
+datasets
+whisper
+numpy==1.26.3
+natsort
+matplotlib
