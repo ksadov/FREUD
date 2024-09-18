@@ -3,7 +3,7 @@ from flask_cors import CORS
 import torch
 import json
 import os
-from mlp_api import init_map, get_activation
+from src.feature_api import init_map, get_activation
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
