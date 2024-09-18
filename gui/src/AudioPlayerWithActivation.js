@@ -11,21 +11,24 @@ const AudioPlayerWithActivation = ({ audioFilename }) => {
   const [activationData, setActivationData] = useState([]);
   const [neuronIdx, setNeuronIdx] = useState('');
   const [currentNeuronIdx, setCurrentNeuronIdx] = useState(null);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [isServerReady, setIsServerReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Initialize the server
-    fetch(`${API_BASE_URL}/init`)
+    // Check server status
+    fetch(`${API_BASE_URL}/status`)
       .then(response => response.json())
       .then(data => {
-        console.log(data);
-        setIsInitialized(true);
+        if (data.status === "Initialization complete") {
+          setIsServerReady(true);
+        } else {
+          setError('Server not ready');
+        }
       })
       .catch(error => {
-        console.error('Error initializing server:', error);
-        setError('Failed to initialize server');
+        console.error('Error checking server status:', error);
+        setError('Failed to connect to server');
       });
 
     // Initialize WaveSurfer
@@ -68,9 +71,9 @@ const AudioPlayerWithActivation = ({ audioFilename }) => {
   }, [audioFilename]);
 
   useEffect(() => {
-    if (isInitialized && currentNeuronIdx !== null) {
+    if (isServerReady && currentNeuronIdx !== null) {
       setIsLoading(true);
-      // Fetch activation data when currentNeuronIdx changes and component is initialized
+      // Fetch activation data when currentNeuronIdx changes and server is ready
       fetch(`${API_BASE_URL}/activation?neuron_idx=${currentNeuronIdx}`)
         .then(response => response.json())
         .then(data => {
@@ -83,7 +86,7 @@ const AudioPlayerWithActivation = ({ audioFilename }) => {
           setError('Failed to fetch activation data');
         });
     }
-  }, [currentNeuronIdx, isInitialized]);
+  }, [currentNeuronIdx, isServerReady]);
 
   useEffect(() => {
     if (wavesurfer.current && activationData.length > 0) {
@@ -145,7 +148,7 @@ const AudioPlayerWithActivation = ({ audioFilename }) => {
       <button
         onClick={togglePlayPause}
         className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 mr-4"
-        disabled={!isInitialized || !!error}
+        disabled={!isServerReady || !!error}
       >
         {isPlaying ? 'Pause' : 'Play'}
       </button>
@@ -156,18 +159,18 @@ const AudioPlayerWithActivation = ({ audioFilename }) => {
           onChange={handleNeuronChange}
           className="px-2 py-1 border rounded"
           min="0"
-          disabled={isLoading || !isInitialized || !!error}
+          disabled={isLoading || !isServerReady || !!error}
         />
         <button
           type="submit"
           className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 ml-2"
-          disabled={isLoading || !isInitialized || !!error}
+          disabled={isLoading || !isServerReady || !!error}
         >
           Update
         </button>
       </form>
       {isLoading && <span className="ml-2">Loading...</span>}
-      {!isInitialized && <p>Initializing...</p>}
+      {!isServerReady && <p>Waiting for server...</p>}
       {currentNeuronIdx !== null && <p className="mt-2">Current Neuron: {currentNeuronIdx}</p>}
     </div>
   );
