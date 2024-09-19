@@ -1,7 +1,7 @@
 import torch
 import torchaudio
 from librispeech_data import LibriSpeechDataset
-from activation_data import load_activations, id_audio_assoc, activation_audio_assoc
+from activation_data import load_activations, id_audio_assoc, activation_audio_assoc, top_activating_files
 from constants import SAMPLE_RATE, TIMESTEP_S
 
 
@@ -29,3 +29,10 @@ def get_activation(neuron_idx: int, audio_fname: str, activation_audio_map: dict
             return trim_activation(audio_fname, activation.transpose(0, 1)[neuron_idx]).tolist()
     raise ValueError(
         f"Audio file {audio_fname} not found in activation_audio_map")
+
+
+def get_top_activating_files(activation_audio_map: dict, n_files: int, neuron_idx: int) -> list[str]:
+    print("GETTING TOP FILES")
+    top_files = top_activating_files(activation_audio_map, n_files, neuron_idx)
+    print("Top files", top_files)
+    return [x[1] for x in top_files[:n_files]]

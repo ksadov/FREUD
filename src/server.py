@@ -1,17 +1,14 @@
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
-import torch
 import json
 import os
-from feature_api import init_map, get_activation
+from feature_api import init_map, get_activation, get_top_activating_files
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Global variable to store the activation_audio_map
 global_activation_audio_map = None
-
-DUMMY_AUDIO = "/home/ksadov/whisper_sae_dataset/LibriSpeech/test-other/8461/281231/8461-281231-0000.flac"
 
 
 def load_activation_map():
@@ -33,17 +30,33 @@ def status():
         return jsonify({"status": "Initialization failed"}), 500
 
 
+@app.route('/top_files', methods=['GET'])
+def get_top_files():
+    print("getting top files")
+    neuron_idx = int(request.args.get('neuron_idx', 0))
+    print("Neuron idx", neuron_idx)
+    n_files = int(request.args.get('n_files', 10))
+    print("N files", n_files)
+    top_files = get_top_activating_files(
+        global_activation_audio_map, n_files, neuron_idx)
+    # top_files = []
+    return jsonify({"top_files": top_files})
+
+
 @app.route('/activation', methods=['GET'])
 def activation():
     neuron_idx = int(request.args.get('neuron_idx', 0))
+    audio_file = request.args.get('audio_file', '')
     activations = get_activation(
-        neuron_idx, DUMMY_AUDIO, global_activation_audio_map)
+        neuron_idx, audio_file, global_activation_audio_map)
     return jsonify({"activations": activations})
 
 
 @app.route('/audio/<path:filename>', methods=['GET'])
 def serve_audio(filename):
-    return send_file(DUMMY_AUDIO, mimetype="audio/flac")
+    # filename is global path to audio file
+    global_fname = '/' + filename
+    return send_file(global_fname, mimetype="audio/flac")
 
 
 if __name__ == '__main__':

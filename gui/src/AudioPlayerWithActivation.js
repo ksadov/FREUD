@@ -1,22 +1,99 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugin/wavesurfer.regions.min.js';
 
 const API_BASE_URL = 'http://192.168.0.18:5000';  // Replace with your actual IP address
 
-const AudioPlayerWithActivation = ({ audioFilename }) => {
-  const waveformRef = useRef(null);
-  const wavesurfer = useRef(null);
+const AudioPlayer = ({ audioFile, neuronIdx }) => {
+  const [wavesurfer, setWavesurfer] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [activationData, setActivationData] = useState([]);
+
+  useEffect(() => {
+    const ws = WaveSurfer.create({
+      container: `#waveform-${audioFile.replace(/[\/\.]/g, '-')}`,
+      waveColor: 'violet',
+      progressColor: 'purple',
+      cursorColor: 'navy',
+      height: 100,
+      responsive: true,
+      plugins: [RegionsPlugin.create()]
+    });
+
+    ws.load(`${API_BASE_URL}/audio/${encodeURIComponent(audioFile)}`);
+
+    ws.on('ready', () => {
+      setWavesurfer(ws);
+      fetchActivationData();
+    });
+
+    ws.on('play', () => setIsPlaying(true));
+    ws.on('pause', () => setIsPlaying(false));
+
+    return () => {
+      ws.destroy();
+    };
+  }, [audioFile]);
+
+  useEffect(() => {
+    if (wavesurfer && activationData.length > 0) {
+      wavesurfer.regions.clear();
+
+      activationData.forEach((activation, index) => {
+        wavesurfer.addRegion({
+          start: index / activationData.length * wavesurfer.getDuration(),
+          end: (index + 1) / activationData.length * wavesurfer.getDuration(),
+          color: getColorFromActivation(activation),
+          drag: false,
+          resize: false,
+        });
+      });
+
+      wavesurfer.drawBuffer();
+    }
+  }, [activationData, wavesurfer]);
+
+  const fetchActivationData = () => {
+    fetch(`${API_BASE_URL}/activation?neuron_idx=${neuronIdx}&audio_file=${encodeURIComponent(audioFile)}`)
+      .then(response => response.json())
+      .then(data => setActivationData(data.activations))
+      .catch(error => console.error('Error fetching activation data:', error));
+  };
+
+  const togglePlayPause = () => {
+    if (wavesurfer) {
+      wavesurfer.playPause();
+    }
+  };
+
+  const getColorFromActivation = (activation) => {
+    if (activation === 0) return 'rgba(0, 0, 0, 0)';
+    const intensity = Math.abs(activation);
+    const alpha = Math.min(intensity * 0.5, 0.5);
+    return activation > 0
+      ? `rgba(0, 255, 0, ${alpha})`  // Green for positive activations
+      : `rgba(255, 0, 0, ${alpha})`; // Red for negative activations
+  };
+
+  return (
+    <div className="mb-4">
+      <div id={`waveform-${audioFile.replace(/[\/\.]/g, '-')}`} />
+      <button onClick={togglePlayPause} className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+        {isPlaying ? 'Pause' : 'Play'}
+      </button>
+      <span className="ml-2">{audioFile}</span>
+    </div>
+  );
+};
+
+const AudioPlayerWithActivation = () => {
   const [neuronIdx, setNeuronIdx] = useState('');
-  const [currentNeuronIdx, setCurrentNeuronIdx] = useState(null);
+  const [topFiles, setTopFiles] = useState([]);
   const [isServerReady, setIsServerReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Check server status
     fetch(`${API_BASE_URL}/status`)
       .then(response => response.json())
       .then(data => {
@@ -30,103 +107,10 @@ const AudioPlayerWithActivation = ({ audioFilename }) => {
         console.error('Error checking server status:', error);
         setError('Failed to connect to server');
       });
-
-    // Initialize WaveSurfer
-    wavesurfer.current = WaveSurfer.create({
-      container: waveformRef.current,
-      waveColor: 'violet',
-      progressColor: 'purple',
-      cursorColor: 'navy',
-      height: 100,
-      responsive: true,
-      plugins: [
-        RegionsPlugin.create()
-      ]
-    });
-
-    const audioUrl = `${API_BASE_URL}/audio/${audioFilename}`;
-    console.log('Loading audio from:', audioUrl);
-
-    wavesurfer.current.load(audioUrl);
-
-    wavesurfer.current.on('ready', () => {
-      console.log('WaveSurfer is ready');
-      wavesurfer.current.drawBuffer();
-    });
-
-    wavesurfer.current.on('error', (e) => {
-      console.error('WaveSurfer error:', e);
-      setError(`Failed to load audio: ${e.message}`);
-    });
-
-    wavesurfer.current.on('play', () => setIsPlaying(true));
-    wavesurfer.current.on('pause', () => setIsPlaying(false));
-
-    // Ensure proper cleanup
-    return () => {
-      if (wavesurfer.current) {
-        wavesurfer.current.destroy();
-      }
-    };
-  }, [audioFilename]);
-
-  useEffect(() => {
-    if (isServerReady && currentNeuronIdx !== null) {
-      setIsLoading(true);
-      // Fetch activation data when currentNeuronIdx changes and server is ready
-      fetch(`${API_BASE_URL}/activation?neuron_idx=${currentNeuronIdx}`)
-        .then(response => response.json())
-        .then(data => {
-          setActivationData(data.activations);
-          setIsLoading(false);
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          setIsLoading(false);
-          setError('Failed to fetch activation data');
-        });
-    }
-  }, [currentNeuronIdx, isServerReady]);
-
-  useEffect(() => {
-    if (wavesurfer.current && activationData.length > 0) {
-      // Clear existing regions
-      wavesurfer.current.regions.clear();
-
-      // Add new regions based on activationData
-      activationData.forEach((activation, index) => {
-        wavesurfer.current.addRegion({
-          start: index / activationData.length * wavesurfer.current.getDuration(),
-          end: (index + 1) / activationData.length * wavesurfer.current.getDuration(),
-          color: getColorFromActivation(activation),
-          drag: false,
-          resize: false,
-        });
-      });
-
-      // Force a redraw of the waveform
-      wavesurfer.current.drawBuffer();
-    }
-  }, [activationData]);
-
-  const togglePlayPause = () => {
-    if (wavesurfer.current) {
-      wavesurfer.current.playPause();
-    }
-  };
-
-  const getColorFromActivation = (activation) => {
-    if (activation === 0) return 'rgba(0, 0, 0, 0)';
-    const intensity = Math.abs(activation);
-    const alpha = Math.min(intensity * 0.5, 0.5);
-    return activation > 0
-      ? `rgba(0, 255, 0, ${alpha})`  // Green for positive activations
-      : `rgba(255, 0, 0, ${alpha})`; // Red for negative activations
-  };
+  }, []);
 
   const handleNeuronChange = (event) => {
-    const value = event.target.value;
-    setNeuronIdx(value);
+    setNeuronIdx(event.target.value);
   };
 
   const handleSubmit = (event) => {
@@ -134,25 +118,32 @@ const AudioPlayerWithActivation = ({ audioFilename }) => {
     if (neuronIdx !== '') {
       const idx = parseInt(neuronIdx, 10);
       if (!isNaN(idx) && idx >= 0) {
-        setCurrentNeuronIdx(idx);
+        fetchTopFiles(idx);
       } else {
         setError('Please enter a valid non-negative integer');
       }
     }
   };
 
+  const fetchTopFiles = (idx) => {
+    setIsLoading(true);
+    fetch(`${API_BASE_URL}/top_files?neuron_idx=${idx}&n_files=10`)
+      .then(response => response.json())
+      .then(data => {
+        setTopFiles(data.top_files);
+        setIsLoading(false);
+      })
+      .catch(error => {
+        console.error('Error fetching top files:', error);
+        setError('Failed to fetch top files');
+        setIsLoading(false);
+      });
+  };
+
   return (
     <div className="w-full max-w-3xl mx-auto p-4">
-      <div ref={waveformRef} className="mb-4" />
       {error && <p className="text-red-500">{error}</p>}
-      <button
-        onClick={togglePlayPause}
-        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 mr-4"
-        disabled={!isServerReady || !!error}
-      >
-        {isPlaying ? 'Pause' : 'Play'}
-      </button>
-      <form onSubmit={handleSubmit} className="inline">
+      <form onSubmit={handleSubmit} className="mb-4">
         <input
           type="number"
           value={neuronIdx}
@@ -169,9 +160,11 @@ const AudioPlayerWithActivation = ({ audioFilename }) => {
           Update
         </button>
       </form>
-      {isLoading && <span className="ml-2">Loading...</span>}
+      {isLoading && <p>Loading...</p>}
       {!isServerReady && <p>Waiting for server...</p>}
-      {currentNeuronIdx !== null && <p className="mt-2">Current Neuron: {currentNeuronIdx}</p>}
+      {topFiles.map((file, index) => (
+        <AudioPlayer key={index} audioFile={file} neuronIdx={parseInt(neuronIdx, 10)} />
+      ))}
     </div>
   );
 };
