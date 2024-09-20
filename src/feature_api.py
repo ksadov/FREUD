@@ -7,7 +7,7 @@ from constants import SAMPLE_RATE, TIMESTEP_S
 
 def load_activations(batch_folder: str) -> dict:
     activation_map = {}
-    for batch_file in os.listdir(batch_folder):
+    for batch_file in os.listdir(batch_folder)[:20]:
         batch_path = os.path.join(batch_folder, batch_file)
         batch = torch.load(batch_path)
         activation_map.update(batch)
@@ -35,7 +35,7 @@ def init_map(layer_name: str, config: dict, split: str) -> torch.Tensor:
     batch_folder = f"{config['out_folder_prefix']}/{split}/{layer_name}"
     activation_map = load_activations(batch_folder)
     dataset = LibriSpeechDataset(
-        config["data_path"], split, torch.device(config["device"]))
+        config["data_path"], split, torch.device(config["device"]), calculate_mel=False)
     id_audio_map = id_audio_assoc(dataset)
     activation_audio_map = activation_audio_assoc(activation_map, id_audio_map)
     # convert to dict where keys are tensors and values are strings

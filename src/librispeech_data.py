@@ -173,7 +173,7 @@ def log_mel_spectrogram(
 
 
 class LibriSpeechDataset(torch.utils.data.Dataset):
-    def __init__(self, librispeech_folder: str, subset: str, device: torch.device):
+    def __init__(self, librispeech_folder: str, subset: str, device: torch.device, calculate_mel: bool = False):
         super().__init__()
         if not os.path.exists(librispeech_folder):
             download = True
@@ -183,12 +183,16 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
             download=download, url=subset, root=librispeech_folder)
         self.root = librispeech_folder
         self.device = device
+        self.calculate_mel = calculate_mel
 
     def __getitem__(self, idx) -> dict:
         file_name, sr, transcript, speaker_id, chapter_id, utterance_id = self.dataset.get_metadata(
             idx)
         global_file_name = os.path.join(self.root, "LibriSpeech", file_name)
-        mel = get_mels_from_audio_path(self.device, global_file_name)
+        if self.calculate_mel:
+            mel = get_mels_from_audio_path(self.device, global_file_name)
+        else:
+            mel = None
         return mel, utterance_id, global_file_name
 
     def __len__(self) -> int:
