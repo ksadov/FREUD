@@ -5,39 +5,12 @@ import json
 import argparse
 import matplotlib.pyplot as plt
 import torchaudio
-
-TIMESTEP_S = 30/1500
-
-
-def load_activations(batch_folder: str) -> dict:
-    activation_map = {}
-    for batch_file in os.listdir(batch_folder):
-        batch_path = os.path.join(batch_folder, batch_file)
-        batch = torch.load(batch_path)
-        activation_map.update(batch)
-    return activation_map
-
-
-def id_audio_assoc(dataset: LibriSpeechDataset) -> dict:
-    id_audio_map = {}
-    for i in range(len(dataset)):
-        _, utterance_id, audio_file = dataset[i]
-        id_audio_map[utterance_id] = audio_file
-    return id_audio_map
-
-
-def activation_audio_assoc(activation_map: dict, id_audio_map: dict) -> dict:
-    activation_audio_map = {}
-    for utterance_id, activation in activation_map.items():
-        utterance_int = utterance_id.item()
-        audio_file = id_audio_map[utterance_int]
-        activation_audio_map[activation] = audio_file
-    return activation_audio_map
+from feature_api import load_activations, id_audio_assoc, activation_audio_assoc, top_activating_files
+from constants import TIMESTEP_S
 
 
 def activation_statistics(activation_audio_map: dict) -> dict:
     activation_shape = list(activation_audio_map.keys())[0].shape
-    print("ACTIVATION SHAPE", activation_shape)
     n_neurons = activation_shape[-1]
     # mean per neuron
     neuron_means = torch.zeros(n_neurons)
@@ -51,19 +24,6 @@ def activation_statistics(activation_audio_map: dict) -> dict:
         "mean": neuron_means,
         "std": neuron_stds,
     }
-
-
-def top_activating_files(activation_audio_map: dict, n_files: int, neuron_idx: int) -> list:
-    top_files = []
-    for activation, audio_file in activation_audio_map.items():
-        max_activation_value = activation.transpose(
-            0, 1)[neuron_idx].max().item()
-        max_time = activation.transpose(
-            0, 1)[neuron_idx].argmax().item() * TIMESTEP_S
-        top_files.append(
-            (max_activation_value, audio_file, max_time, activation))
-    top_files.sort(key=lambda x: x[0], reverse=True)
-    return top_files[:n_files]
 
 
 def plot_statistics(stats: dict, plot_prefix: str):

@@ -1,13 +1,33 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugin/wavesurfer.regions.min.js';
 
 const API_BASE_URL = 'http://192.168.0.18:5000';  // Replace with your actual IP address
 
-const AudioPlayer = ({ audioFile, neuronIdx }) => {
+const AudioPlayer = ({ audioFile, activations }) => {
   const [wavesurfer, setWavesurfer] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [activationData, setActivationData] = useState([]);
+  const [isReady, setIsReady] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  const addRegions = useCallback(() => {
+    if (wavesurfer && isReady && activations.length > 0) {
+      wavesurfer.regions.clear();
+
+      activations.forEach((activation, index) => {
+        wavesurfer.addRegion({
+          start: index / activations.length * wavesurfer.getDuration(),
+          end: (index + 1) / activations.length * wavesurfer.getDuration(),
+          color: getColorFromActivation(activation),
+          drag: false,
+          resize: false,
+        });
+      });
+
+      wavesurfer.drawBuffer();
+    }
+  }, [wavesurfer, isReady, activations]);
 
   useEffect(() => {
     const ws = WaveSurfer.create({
@@ -24,11 +44,14 @@ const AudioPlayer = ({ audioFile, neuronIdx }) => {
 
     ws.on('ready', () => {
       setWavesurfer(ws);
-      fetchActivationData();
+      setIsReady(true);
+      setDuration(ws.getDuration());
     });
 
     ws.on('play', () => setIsPlaying(true));
     ws.on('pause', () => setIsPlaying(false));
+    ws.on('audioprocess', () => setCurrentTime(ws.getCurrentTime()));
+    ws.on('seek', () => setCurrentTime(ws.getCurrentTime()));
 
     return () => {
       ws.destroy();
@@ -36,29 +59,14 @@ const AudioPlayer = ({ audioFile, neuronIdx }) => {
   }, [audioFile]);
 
   useEffect(() => {
-    if (wavesurfer && activationData.length > 0) {
-      wavesurfer.regions.clear();
+    addRegions();
+  }, [addRegions]);
 
-      activationData.forEach((activation, index) => {
-        wavesurfer.addRegion({
-          start: index / activationData.length * wavesurfer.getDuration(),
-          end: (index + 1) / activationData.length * wavesurfer.getDuration(),
-          color: getColorFromActivation(activation),
-          drag: false,
-          resize: false,
-        });
-      });
-
-      wavesurfer.drawBuffer();
+  useEffect(() => {
+    if (wavesurfer) {
+      wavesurfer.load(`${API_BASE_URL}/audio/${encodeURIComponent(audioFile)}`);
     }
-  }, [activationData, wavesurfer]);
-
-  const fetchActivationData = () => {
-    fetch(`${API_BASE_URL}/activation?neuron_idx=${neuronIdx}&audio_file=${encodeURIComponent(audioFile)}`)
-      .then(response => response.json())
-      .then(data => setActivationData(data.activations))
-      .catch(error => console.error('Error fetching activation data:', error));
-  };
+  }, [audioFile, wavesurfer]);
 
   const togglePlayPause = () => {
     if (wavesurfer) {
@@ -75,13 +83,26 @@ const AudioPlayer = ({ audioFile, neuronIdx }) => {
       : `rgba(255, 0, 0, ${alpha})`; // Red for negative activations
   };
 
+  const formatTime = (time) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    const milliseconds = Math.floor((time % 1) * 1000);
+    // only use the first 2 digits of milliseconds
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="mb-4">
       <div id={`waveform-${audioFile.replace(/[\/\.]/g, '-')}`} />
-      <button onClick={togglePlayPause} className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-        {isPlaying ? 'Pause' : 'Play'}
-      </button>
-      <span className="ml-2">{audioFile}</span>
+      <div className="flex items-center mt-2">
+        <button onClick={togglePlayPause} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 mr-4">
+          {isPlaying ? 'Pause' : 'Play'}
+        </button>
+        <span className="text-sm font-mono">
+          {formatTime(currentTime)} / {formatTime(duration)}
+        </span>
+        <span className="ml-4">{audioFile}</span>
+      </div>
     </div>
   );
 };
@@ -89,6 +110,7 @@ const AudioPlayer = ({ audioFile, neuronIdx }) => {
 const AudioPlayerWithActivation = () => {
   const [neuronIdx, setNeuronIdx] = useState('');
   const [topFiles, setTopFiles] = useState([]);
+  const [activations, setActivations] = useState([]);
   const [isServerReady, setIsServerReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -127,10 +149,11 @@ const AudioPlayerWithActivation = () => {
 
   const fetchTopFiles = (idx) => {
     setIsLoading(true);
-    fetch(`${API_BASE_URL}/top_files?neuron_idx=${idx}&n_files=10`)
+    fetch(`${API_BASE_URL}/top_files?neuron_idx=${idx}&n_files=4`)
       .then(response => response.json())
       .then(data => {
         setTopFiles(data.top_files);
+        setActivations(data.activations);
         setIsLoading(false);
       })
       .catch(error => {
@@ -163,7 +186,7 @@ const AudioPlayerWithActivation = () => {
       {isLoading && <p>Loading...</p>}
       {!isServerReady && <p>Waiting for server...</p>}
       {topFiles.map((file, index) => (
-        <AudioPlayer key={index} audioFile={file} neuronIdx={parseInt(neuronIdx, 10)} />
+        <AudioPlayer key={`${file}-${index}`} audioFile={file} activations={activations[index] || []} />
       ))}
     </div>
   );

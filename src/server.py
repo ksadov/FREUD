@@ -1,8 +1,7 @@
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 import json
-import os
-from feature_api import init_map, get_activation, get_top_activating_files
+from feature_api import init_map, get_top_activations
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -37,19 +36,11 @@ def get_top_files():
     print("Neuron idx", neuron_idx)
     n_files = int(request.args.get('n_files', 10))
     print("N files", n_files)
-    top_files = get_top_activating_files(
+    top_files, activations = get_top_activations(
         global_activation_audio_map, n_files, neuron_idx)
+    activations = [x.tolist() for x in activations]
     # top_files = []
-    return jsonify({"top_files": top_files})
-
-
-@app.route('/activation', methods=['GET'])
-def activation():
-    neuron_idx = int(request.args.get('neuron_idx', 0))
-    audio_file = request.args.get('audio_file', '')
-    activations = get_activation(
-        neuron_idx, audio_file, global_activation_audio_map)
-    return jsonify({"activations": activations})
+    return jsonify({"top_files": top_files, "activations": activations})
 
 
 @app.route('/audio/<path:filename>', methods=['GET'])
