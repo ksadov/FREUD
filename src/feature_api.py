@@ -7,7 +7,7 @@ from constants import SAMPLE_RATE, TIMESTEP_S
 
 def load_activations(batch_folder: str) -> dict:
     activation_map = {}
-    for batch_file in os.listdir(batch_folder)[:20]:
+    for batch_file in os.listdir(batch_folder):
         batch_path = os.path.join(batch_folder, batch_file)
         batch = torch.load(batch_path)
         activation_map.update(batch)
@@ -27,7 +27,7 @@ def activation_audio_assoc(activation_map: dict, id_audio_map: dict) -> dict:
     for utterance_id, activation in activation_map.items():
         utterance_int = utterance_id.item()
         audio_file = id_audio_map[utterance_int]
-        activation_audio_map[activation] = audio_file
+        activation_audio_map[audio_file] = activation
     return activation_audio_map
 
 
@@ -50,13 +50,12 @@ def trim_activation(audio_fname: str, activation: torch.Tensor) -> torch.Tensor:
 
 
 def get_activation(neuron_idx: int, audio_fname: str, activation_audio_map: dict) -> list:
-    for activation, audio_file in activation_audio_map.items():
-        if audio_file == audio_fname:
-            activation_at_idx = activation.transpose(0, 1)[neuron_idx]
-            # return trim_activation(audio_fname, activation.transpose(0, 1)[neuron_idx]).tolist()
-            return activation.transpose(0, 1)[neuron_idx].tolist()
-    raise ValueError(
-        f"Audio file {audio_fname} not found in activation_audio_map")
+    if audio_fname in activation_audio_map:
+        activation = activation_audio_map[audio_fname]
+        return activation.transpose(0, 1)[neuron_idx]
+    else:
+        raise ValueError(
+            f"Audio file {audio_fname} not found in activation_audio_map")
 
 
 def get_top_activating_files(activation_audio_map: dict, n_files: int, neuron_idx: int) -> list[str]:
@@ -67,14 +66,14 @@ def get_top_activating_files(activation_audio_map: dict, n_files: int, neuron_id
 
 def top_activating_files(activation_audio_map: dict, n_files: int, neuron_idx: int) -> list:
     top = []
-    for activation, audio_file in activation_audio_map.items():
+    for audio_file, activation in activation_audio_map.items():
         activation_at_idx = activation.transpose(0, 1)[neuron_idx]
         trimmed_activation = trim_activation(audio_file, activation_at_idx)
         max_activation_value = trimmed_activation.max().item()
         max_activation_loc = trimmed_activation.argmax().item()
         max_activation_time = max_activation_loc * TIMESTEP_S
         top.append((audio_file, trimmed_activation,
-                   max_activation_value, max_activation_time))
+                    max_activation_value, max_activation_time))
     top.sort(key=lambda x: x[2], reverse=True)
     return top[:n_files]
 
