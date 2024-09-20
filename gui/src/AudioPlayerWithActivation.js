@@ -1,37 +1,24 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugin/wavesurfer.regions.min.js';
 
 const API_BASE_URL = 'http://192.168.0.18:5000';  // Replace with your actual IP address
 
 const AudioPlayer = ({ audioFile, activations }) => {
-  const [wavesurfer, setWavesurfer] = useState(null);
+  const waveformRef = useRef(null);
+  const wavesurferRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [isReady, setIsReady] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [currentActivation, setCurrentActivation] = useState(0);
 
-  const addRegions = useCallback(() => {
-    if (wavesurfer && isReady && activations.length > 0) {
-      wavesurfer.regions.clear();
-
-      activations.forEach((activation, index) => {
-        wavesurfer.addRegion({
-          start: index / activations.length * wavesurfer.getDuration(),
-          end: (index + 1) / activations.length * wavesurfer.getDuration(),
-          color: getColorFromActivation(activation),
-          drag: false,
-          resize: false,
-        });
-      });
-
-      wavesurfer.drawBuffer();
+  const createWavesurfer = useCallback(() => {
+    if (wavesurferRef.current) {
+      wavesurferRef.current.destroy();
     }
-  }, [wavesurfer, isReady, activations]);
 
-  useEffect(() => {
-    const ws = WaveSurfer.create({
-      container: `#waveform-${audioFile.replace(/[\/\.]/g, '-')}`,
+    wavesurferRef.current = WaveSurfer.create({
+      container: waveformRef.current,
       waveColor: 'violet',
       progressColor: 'purple',
       cursorColor: 'navy',
@@ -40,37 +27,64 @@ const AudioPlayer = ({ audioFile, activations }) => {
       plugins: [RegionsPlugin.create()]
     });
 
-    ws.load(`${API_BASE_URL}/audio/${encodeURIComponent(audioFile)}`);
-
-    ws.on('ready', () => {
-      setWavesurfer(ws);
-      setIsReady(true);
-      setDuration(ws.getDuration());
+    wavesurferRef.current.on('ready', () => {
+      setDuration(wavesurferRef.current.getDuration());
+      addRegions();
     });
 
-    ws.on('play', () => setIsPlaying(true));
-    ws.on('pause', () => setIsPlaying(false));
-    ws.on('audioprocess', () => setCurrentTime(ws.getCurrentTime()));
-    ws.on('seek', () => setCurrentTime(ws.getCurrentTime()));
+    wavesurferRef.current.on('audioprocess', updateTimeAndActivation);
+    wavesurferRef.current.on('seek', updateTimeAndActivation);
+    wavesurferRef.current.on('play', () => setIsPlaying(true));
+    wavesurferRef.current.on('pause', () => setIsPlaying(false));
 
-    return () => {
-      ws.destroy();
-    };
+    return wavesurferRef.current;
+  }, []);
+
+  const updateTimeAndActivation = useCallback(() => {
+    if (wavesurferRef.current) {
+      const currentTime = wavesurferRef.current.getCurrentTime();
+      setCurrentTime(currentTime);
+
+      if (activations.length > 0) {
+        const currentTimeRatio = currentTime / wavesurferRef.current.getDuration();
+        const activationIndex = Math.floor(currentTimeRatio * activations.length);
+        setCurrentActivation(activations[activationIndex] || 0);
+      }
+    }
+  }, [activations]);
+
+  const addRegions = useCallback(() => {
+    if (wavesurferRef.current && activations.length > 0) {
+      wavesurferRef.current.regions.clear();
+
+      activations.forEach((activation, index) => {
+        wavesurferRef.current.addRegion({
+          start: index / activations.length * wavesurferRef.current.getDuration(),
+          end: (index + 1) / activations.length * wavesurferRef.current.getDuration(),
+          color: getColorFromActivation(activation),
+          drag: false,
+          resize: false,
+        });
+      });
+
+      wavesurferRef.current.drawBuffer();
+    }
+  }, [activations]);
+
+  useEffect(() => {
+    const wavesurfer = createWavesurfer();
+    return () => wavesurfer.destroy();
+  }, [createWavesurfer]);
+
+  useEffect(() => {
+    if (wavesurferRef.current) {
+      wavesurferRef.current.load(`${API_BASE_URL}/audio/${encodeURIComponent(audioFile)}`);
+    }
   }, [audioFile]);
 
-  useEffect(() => {
-    addRegions();
-  }, [addRegions]);
-
-  useEffect(() => {
-    if (wavesurfer) {
-      wavesurfer.load(`${API_BASE_URL}/audio/${encodeURIComponent(audioFile)}`);
-    }
-  }, [audioFile, wavesurfer]);
-
   const togglePlayPause = () => {
-    if (wavesurfer) {
-      wavesurfer.playPause();
+    if (wavesurferRef.current) {
+      wavesurferRef.current.playPause();
     }
   };
 
@@ -86,26 +100,29 @@ const AudioPlayer = ({ audioFile, activations }) => {
   const formatTime = (time) => {
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
-    const milliseconds = Math.floor((time % 1) * 1000);
-    // only use the first 2 digits of milliseconds
+    const milliseconds = Math.floor((time % 1) * 100); // Only two digits
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
   };
 
   return (
     <div className="mb-4">
-      <div id={`waveform-${audioFile.replace(/[\/\.]/g, '-')}`} />
+      <div ref={waveformRef} />
       <div className="flex items-center mt-2">
         <button onClick={togglePlayPause} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 mr-4">
           {isPlaying ? 'Pause' : 'Play'}
         </button>
-        <span className="text-sm font-mono">
+        <span className="text-sm font-mono mr-4">
           {formatTime(currentTime)} / {formatTime(duration)}
+        </span>
+        <span className="text-sm font-mono" style={{ color: currentActivation >= 0 ? 'green' : 'red' }}>
+          Activation: {currentActivation.toFixed(4)}
         </span>
         <span className="ml-4">{audioFile}</span>
       </div>
     </div>
   );
 };
+
 
 const AudioPlayerWithActivation = () => {
   const [neuronIdx, setNeuronIdx] = useState('');
