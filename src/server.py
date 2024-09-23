@@ -13,10 +13,10 @@ global_activation_audio_map = None
 def load_activation_map():
     global global_activation_audio_map
     layer_name = "encoder.blocks.2.mlp.1"
-    config_path = "/home/ksadov/whisper_sae/src/configs/tiny_mlp_2.json"
+    config_path = "/home/ksadov/whisper_sae/src/configs/mlp_replication.json"
     with open(config_path, 'r') as f:
         config = json.load(f)
-    split = "test-other"
+    split = "train-other-500"
     global_activation_audio_map = init_map(layer_name, config, split)
     print("Activation map loaded successfully.")
 
