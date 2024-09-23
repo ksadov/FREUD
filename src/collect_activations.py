@@ -42,7 +42,7 @@ def get_activations(
     batch_id = 0
     for batch in tqdm(dataloader):
         whisper_cache.reset_state()
-        mels, utterance_ids, _, transcript = batch
+        mels, _, global_file_name, transcript = batch
         with torch.no_grad():
             result = whisper_cache.forward(mels)
         activations = whisper_cache.activations
@@ -52,10 +52,10 @@ def get_activations(
             out_folder = create_out_folder(
                 f"{out_folder_prefix}/{split}/{name}")
             activation_batch = {}
-            for i, utterance_id in enumerate(utterance_ids):
-                print("transcript for", utterance_id, transcript[i])
-                print("result for ", utterance_id, result[i].text)
-                activation_batch[utterance_id] = (act[i], result[i].text)
+            for i, file_name in enumerate(global_file_name):
+                print("transcript for ", file_name, transcript[i])
+                print("result for ", file_name, result[i].text)
+                activation_batch[file_name] = (act[i], result[i].text)
             if activation_batch:
                 save_batch((activation_batch),
                            out_folder, batch_id)

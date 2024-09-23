@@ -9,10 +9,7 @@ def load_activations(batch_folder: str) -> dict:
     activation_map = {}
     for batch_file in os.listdir(batch_folder)[:50]:
         batch_path = os.path.join(batch_folder, batch_file)
-        batch = torch.load(batch_path)
-        print("BATCH: ", batch.values())
-        int_key_map = {int(k): v for k, v in batch.items()}
-        activation_map.update(int_key_map)
+        activation_map.update(torch.load(batch_path))
     return activation_map
 
 
@@ -42,12 +39,14 @@ def activation_audio_assoc(activation_map: dict, id_audio_map: dict) -> dict:
 def init_map(layer_name: str, config: dict, split: str) -> torch.Tensor:
     batch_folder = f"{config['out_folder_prefix']}/{split}/{layer_name}"
     activation_map = load_activations(batch_folder)
+    """
     dataset = LibriSpeechDataset(
         config["data_path"], split, torch.device(config["device"]), calculate_mel=False)
     id_audio_map = id_audio_assoc(dataset)
     activation_audio_map = activation_audio_assoc(activation_map, id_audio_map)
-    # convert to dict where keys are tensors and values are strings
     activation_audio_map = {k: v for k, v in activation_audio_map.items()}
+    """
+    activation_audio_map = activation_map
     return activation_audio_map
 
 
@@ -60,7 +59,7 @@ def trim_activation(audio_fname: str, activation: torch.Tensor) -> torch.Tensor:
 def get_activation(neuron_idx: int, audio_fname: str, activation_audio_map: dict) -> list:
     if audio_fname in activation_audio_map:
         activation = activation_audio_map[audio_fname]
-        return activation.transpose(0, 1)[neuron_idx]
+        return activation[0].transpose(0, 1)[neuron_idx]
     else:
         raise ValueError(
             f"Audio file {audio_fname} not found in activation_audio_map")
@@ -75,7 +74,7 @@ def get_top_activating_files(activation_audio_map: dict, n_files: int, neuron_id
 def top_activating_files(activation_audio_map: dict, n_files: int, neuron_idx: int) -> list:
     top = []
     for audio_file, activation in activation_audio_map.items():
-        activation_at_idx = activation.transpose(0, 1)[neuron_idx]
+        activation_at_idx = activation[0].transpose(0, 1)[neuron_idx]
         trimmed_activation = trim_activation(audio_file, activation_at_idx)
         max_activation_value = trimmed_activation.max().item()
         max_activation_loc = trimmed_activation.argmax().item()
