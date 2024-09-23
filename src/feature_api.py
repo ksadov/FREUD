@@ -10,23 +10,31 @@ def load_activations(batch_folder: str) -> dict:
     for batch_file in os.listdir(batch_folder)[:50]:
         batch_path = os.path.join(batch_folder, batch_file)
         batch = torch.load(batch_path)
-        activation_map.update(batch)
+        print("BATCH: ", batch.values())
+        int_key_map = {int(k): v for k, v in batch.items()}
+        activation_map.update(int_key_map)
     return activation_map
 
 
 def id_audio_assoc(dataset: LibriSpeechDataset) -> dict:
     id_audio_map = {}
     for i in range(len(dataset)):
-        _, utterance_id, audio_file = dataset[i]
-        id_audio_map[utterance_id] = audio_file
+        _, utterance_id, audio_file, transcript = dataset[i]
+        id_audio_map[utterance_id] = (audio_file, transcript)
     return id_audio_map
 
 
 def activation_audio_assoc(activation_map: dict, id_audio_map: dict) -> dict:
     activation_audio_map = {}
+    print("ID AUDIO MAP KEYS: ", id_audio_map.keys())
+    print("ACTIVATION MAP KEYS: ", activation_map.keys())
     for utterance_id, activation in activation_map.items():
-        utterance_int = utterance_id.item()
+        utterance_int = utterance_id
         audio_file = id_audio_map[utterance_int]
+        print("ACTIVATION for utterance_id: ",
+              utterance_id, ": ", activation[1])
+        print("TRANSCRIPT for utterance_id: ",
+              utterance_id, ": ", audio_file[1])
         activation_audio_map[audio_file] = activation
     return activation_audio_map
 

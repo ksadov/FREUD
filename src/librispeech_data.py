@@ -193,7 +193,7 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
             mel = get_mels_from_audio_path(self.device, global_file_name)
         else:
             mel = None
-        return mel, utterance_id, global_file_name
+        return mel, utterance_id, global_file_name, transcript
 
     def __len__(self) -> int:
         return len(self.dataset)
