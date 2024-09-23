@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugin/wavesurfer.regions.min.js';
 
-const API_BASE_URL = 'http://192.168.0.18:5000';  // Replace with your actual IP address
+const API_BASE_URL = 'http://localhost:5000';  // Replace with your actual IP address
 
 const AudioPlayer = ({ audioFile, activations }) => {
   const waveformRef = useRef(null);

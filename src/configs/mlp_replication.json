@@ -9,5 +9,6 @@
   "batch_size": 4,
   "data_path": "/home/ksadov/whisper_sae_dataset",
   "device": "cuda",
-  "out_folder_prefix": "activations/mlp_replication_2"
+  "out_folder_prefix": "activations/mlp_replication_2",
+  "save_transciption": true
 }

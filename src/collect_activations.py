@@ -28,7 +28,8 @@ def get_activations(
     split: str,
     batch_size: int,
     device: torch.device,
-    out_folder_prefix: str
+    out_folder_prefix: str,
+    save_transcriptions: bool
 ):
     whisper_cache = WhisperActivationCache(
         model=whisper_model,
@@ -55,7 +56,10 @@ def get_activations(
             for i, file_name in enumerate(global_file_name):
                 print("transcript for ", file_name, transcript[i])
                 print("result for ", file_name, result[i].text)
-                activation_batch[file_name] = (act[i], result[i].text)
+                if save_transcriptions:
+                    activation_batch[file_name] = (act[i], result[i].text)
+                else:
+                    activation_batch[file_name] = act[i]
             if activation_batch:
                 save_batch((activation_batch),
                            out_folder, batch_id)
@@ -80,6 +84,7 @@ def main():
             config["batch_size"],
             torch.device(config["device"]),
             config["out_folder_prefix"],
+            config["save_transcriptions"]
         )
 
 

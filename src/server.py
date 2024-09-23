@@ -39,7 +39,6 @@ def get_top_files():
     top_files, activations = get_top_activations(
         global_activation_audio_map, n_files, neuron_idx)
     activations = [x.tolist() for x in activations]
-    # top_files = []
     return jsonify({"top_files": top_files, "activations": activations})
 
 
@@ -52,4 +51,4 @@ def serve_audio(filename):
 
 if __name__ == '__main__':
     load_activation_map()
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True, host='0.0.0.0', port=5000)
