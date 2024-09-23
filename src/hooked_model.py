@@ -118,8 +118,6 @@ class WhisperActivationCache(BaseActivationModule):
                     (self.activations[f"{name}"], output_), dim=1
                 )
             else:
-                # FOR NOW, let's only take the first 50 neurons
-                output_trimmed = output_[:, :, :50]
-                self.activations[f"{name}"] = output_trimmed
+                self.activations[f"{name}"] = output_
 
         return hook
