@@ -1,9 +1,10 @@
 jaxtyping
 datasets
-whisper
 numpy==1.26.3
 natsort
 matplotlib
+regex
+openai-whisper
 # for the interactive GUI
 Flask
 Flask-CORS
