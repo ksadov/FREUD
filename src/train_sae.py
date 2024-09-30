@@ -20,6 +20,7 @@ def validate(
     recon_alpha: float,
     activation_folder: str,
     device: torch.device,
+    activation_dims: int
 ):
     model.eval()
     losses_recon = []
@@ -31,10 +32,11 @@ def validate(
     )
     for activations in val_loader:
         with torch.no_grad() and autocast():
+            activations, filenames = activations
             activations = activations.to(device)
             pred, c = model(activations)
             losses_recon.append(recon_alpha * recon_loss_fn(pred, activations).item())
-            losses_l1.append(torch.norm(c, 1, dim=2).mean().item())
+            losses_l1.append(torch.norm(c, 1, dim=activation_dims).mean().item())
 
     model.train()
     return np.array(losses_recon).mean(), np.array(losses_l1).mean()
@@ -248,7 +250,7 @@ def train(seed: int,
         if state["step"] % val_every == 0:
             print("Validating...")
             val_loss_recon, val_loss_l1 = validate(
-                model, recon_loss_fn, recon_alpha, activation_folder, device
+                model, recon_loss_fn, recon_alpha, activation_folder, device, activation_dims
             )
             print(f"{state['step']} validation, loss_recon={val_loss_recon:.3f}")
             # log validation losses

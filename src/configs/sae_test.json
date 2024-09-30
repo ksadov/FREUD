@@ -16,6 +16,6 @@
   "save_every": 1000,
   "val_every": 1000,
   "checkpoint": null,
-  "checkpoint_out": null,
+  "checkpoint_out": "sae_test_block_2",
   "recon_alpha": 1.0
 }
