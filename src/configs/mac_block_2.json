@@ -9,6 +9,6 @@
   "batch_size": 16,
   "data_path": "/Users/ksadov/Documents/ml_experiments/whisper_sae/librispeech_data",
   "device": "cpu",
-  "out_folder_prefix": "activations/tiny_mlp_activations",
+  "out_folder_prefix": "activations/test_block_2",
   "save_transcriptions": false
 }
