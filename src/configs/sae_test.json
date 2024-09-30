@@ -1,0 +1,21 @@
+{
+  "seed": 0,
+  "activation_folder": "activations/sae_test",
+  "device": "cpu",
+  "n_dict_components": 1000,
+  "run_dir": "runs/sae_test",
+  "lr": 0.0001,
+  "weight_decay": 0.0,
+  "steps": 100000,
+  "grad_acc_steps": 1,
+  "clip_thresh": 1.0,
+  "batch_size": 160,
+  "dl_max_workers": 0,
+  "log_every": 100,
+  "log_tb_every": 100,
+  "save_every": 1000,
+  "val_every": 1000,
+  "checkpoint": null,
+  "checkpoint_out": null,
+  "recon_alpha": 1.0
+}
