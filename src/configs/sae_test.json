@@ -1,6 +1,6 @@
 {
   "seed": 0,
-  "activation_folder": "activations/sae_test",
+  "activation_folder": "activations/test_block_2/test-other/encoder.blocks.2",
   "device": "cpu",
   "n_dict_components": 1000,
   "run_dir": "runs/sae_test",

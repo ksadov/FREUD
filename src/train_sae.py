@@ -140,7 +140,8 @@ def train(seed: int,
     set_seeds(seed)
     train_dataset = ActivationDataset(activation_folder, "train")
     # train_dataset = TokenEmbeddingDataset()
-    feat_dim = next(iter(train_dataset))[0].shape[-1]
+    feat_dim = train_dataset.activation_shape[-1]
+    activation_dims = len(train_dataset.activation_shape)
     model = AutoEncoder(feat_dim, n_dict_components).to(device)
     dist_model = model
 
@@ -210,7 +211,7 @@ def train(seed: int,
                 pred, c = dist_model(activations)  # bsz, seq_len, n_classes
                 forward_time += perf_counter() - start_time
                 loss_recon = recon_alpha * recon_loss_fn(pred, activations)
-                loss_l1 = torch.norm(c, 1, dim=2).mean()
+                loss_l1 = torch.norm(c, 1, dim=activation_dims).mean()
                 loss = loss_recon + loss_l1
                 losses_recon.append(loss_recon.item())
                 losses_l1.append(loss_l1.item())
