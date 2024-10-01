@@ -45,6 +45,9 @@ class BaseActivationModule(ABC):
         self.remove_hooks()
         return model_out
 
+    def substituted_forward(self, x: Float[Tensor, "bsz seq_len n_mels"], substituted_activation: torch.tensor):
+        pass
+
     def register_hooks(self):
         for name, module in self.model.named_modules():
             if name in self.activations_to_cache:
@@ -119,5 +122,45 @@ class WhisperActivationCache(BaseActivationModule):
                 )
             else:
                 self.activations[f"{name}"] = output_
+
+        return hook
+
+class WhisperSubbedActivation(torch.nn.Module):
+    """
+    Whisper but we can substitute a custom activation for one of the layers
+    """
+    def __init__(
+        self,
+        model: torch.nn.Module,
+        substitution_layer: str,
+        device: torch.device = torch.device("cuda"),
+    ):
+        super().__init__()
+        self.model = model
+        self.device = device
+        self.substitution_layer = substitution_layer
+
+    def forward(self, mels: Float[Tensor, "bsz seq_len n_mels"], substitute_activation: Tensor):  # noqa: F821
+        self.model.zero_grad()
+        if substitute_activation is not None:
+            forward_hook = self.register_hook(substitute_activation)
+        options = whisper.DecodingOptions(
+            without_timestamps=False, fp16=(self.device == torch.device("cuda"))
+        )
+        output = self.model.decode(mels, options)
+        if substitute_activation is not None:
+            forward_hook.remove()
+        return output
+    
+    def register_hook(self, substitution_activation: Tensor):
+        for name, module in self.model.named_modules():
+            if name == self.substitution_layer:
+                hook_fn = self._get_substitution_hook(substitution_activation)
+                forward_hook = module.register_forward_hook(hook_fn)
+                return forward_hook
+    
+    def _get_substitution_hook(self, substitution_activation):
+        def hook(module, input, output):
+            return substitution_activation
 
         return hook
