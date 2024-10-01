@@ -291,14 +291,14 @@ def train(seed: int,
             tb_logger.add_scalar("val/loss_recon", val_loss_recon, state["step"])
             tb_logger.add_scalar("val/loss_l1", val_loss_l1, state["step"])
             for i, transcript in enumerate(subbed_transcripts):
-                tb_logger.add_text(f"val/reconstructed_transcript_{i}", transcript, state["step"])
+                tb_logger.add_text(f"val/transcripts/reconstructed_{i}", transcript, state["step"])
             if base_transcripts != []:
                 for i, transcript in enumerate(base_transcripts):
-                    tb_logger.add_text(f"val/base_transcript_{i}", transcript, state["step"])
+                    tb_logger.add_text(f"val/transcripts/base_{i}", transcript, state["step"])
                 for i, filename in enumerate(base_filenames):
                     # log audio file, which is a flac at 16000 Hz
                     audio = torchaudio.load(filename)[0]
-                    tb_logger.add_audio(f"val/audio_{i}", audio, state["step"], sample_rate=16000)
+                    tb_logger.add_audio(f"val/transcripts/audio_{i}", audio, state["step"], sample_rate=16000)
             if val_loss_recon.item() < state["best_val_loss"]:
                 print("Saving new best validation")
                 state["best_val_loss"] = val_loss_recon.item()
