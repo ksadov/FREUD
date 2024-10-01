@@ -1,6 +1,9 @@
 import torch
+import whisper
 from torch.cuda.amp import autocast
 from activation_dataset import ActivationDataset
+from librispeech_data import get_mels_from_audio_path
+from hooked_model import WhisperSubbedActivation
 import numpy as np
 import random
 import os
@@ -20,23 +23,40 @@ def validate(
     recon_alpha: float,
     activation_folder: str,
     device: torch.device,
-    activation_dims: int
+    activation_dims: int,
+    layer_name: str,
+    whisper_model: str
 ):
     model.eval()
+    whisper_model = whisper.load_model(whisper_model)
+    whisper_sub = WhisperSubbedActivation(
+        model=whisper_model,
+        substitution_layer=layer_name,
+        device=device
+    )
     losses_recon = []
     losses_l1 = []
+    N_TRANSCRIPTS = 4
 
     val_dataset = ActivationDataset(activation_folder, "val")
     val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=1, shuffle=False
     )
-    for activations in val_loader:
+    for i, activations in enumerate(val_loader):
         with torch.no_grad() and autocast():
             activations, filenames = activations
             activations = activations.to(device)
+            filenames = filenames[0]
             pred, c = model(activations)
             losses_recon.append(recon_alpha * recon_loss_fn(pred, activations).item())
             losses_l1.append(torch.norm(c, 1, dim=activation_dims).mean().item())
+            if i < N_TRANSCRIPTS:
+                mels = get_mels_from_audio_path(device, filenames)
+                mels = torch.tensor(mels)
+                subbed_result = whisper_sub.forward(mels, pred)
+                base_result = whisper_sub.forward(mels, None)
+                print("subbed result:", subbed_result)
+                print("base result:", base_result)
 
     model.train()
     return np.array(losses_recon).mean(), np.array(losses_l1).mean()
@@ -136,7 +156,9 @@ def train(seed: int,
           save_every: int, 
           val_every: int, 
           checkpoint: str, 
-          recon_alpha: float
+          recon_alpha: float,
+          layer_name: str,
+          whisper_model: str
           ):
     set_seeds(seed)
     train_dataset = ActivationDataset(activation_folder, "train")
@@ -251,7 +273,7 @@ def train(seed: int,
         if state["step"] % val_every == 0:
             print("Validating...")
             val_loss_recon, val_loss_l1 = validate(
-                model, recon_loss_fn, recon_alpha, activation_folder, device, activation_dims
+                model, recon_loss_fn, recon_alpha, activation_folder, device, activation_dims, layer_name, whisper_model
             )
             print(f"{state['step']} validation, loss_recon={val_loss_recon:.3f}")
             # log validation losses

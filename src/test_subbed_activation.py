@@ -17,7 +17,7 @@ def init_models(whisper_model: str, layer_name: str, device: torch.device):
     device=device
   )
   return whisper_cache, whisper_sub
-  
+ 
 def test_cached(
         layer_name: str,
         whisper_cache: WhisperActivationCache, 

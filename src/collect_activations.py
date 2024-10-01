@@ -57,6 +57,7 @@ def get_activations(
             for i, file_name in enumerate(global_file_name):
                 print("transcript for ", file_name, transcript[i])
                 print("result for ", file_name, result[i].text)
+                print("ACTIVATION SHAPE", act[i].shape)
                 if save_transcriptions:
                     activation_batch[file_name] = (act[i], result[i].text)
                 else:
