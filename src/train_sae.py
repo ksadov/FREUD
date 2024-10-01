@@ -37,6 +37,7 @@ def validate(
     losses_recon = []
     losses_l1 = []
     N_TRANSCRIPTS = 4
+    subbed_transcripts = []
 
     val_dataset = ActivationDataset(activation_folder, "val")
     val_loader = torch.utils.data.DataLoader(
@@ -55,11 +56,12 @@ def validate(
                 mels = torch.tensor(mels)
                 subbed_result = whisper_sub.forward(mels, pred)
                 base_result = whisper_sub.forward(mels, None)
-                print("subbed result:", subbed_result)
-                print("base result:", base_result)
+                print("subbed result:", subbed_result.text)
+                print("base result:", base_result.text)
+                subbed_transcripts.append(subbed_result.text)
 
     model.train()
-    return np.array(losses_recon).mean(), np.array(losses_l1).mean()
+    return np.array(losses_recon).mean(), np.array(losses_l1).mean(), subbed_transcripts
 
 def mse_loss(input, target, ignored_index, reduction):
     # mse_loss with ignored_index
@@ -272,13 +274,15 @@ def train(seed: int,
         # validate periodically
         if state["step"] % val_every == 0:
             print("Validating...")
-            val_loss_recon, val_loss_l1 = validate(
+            val_loss_recon, val_loss_l1, subbed_transcripts = validate(
                 model, recon_loss_fn, recon_alpha, activation_folder, device, activation_dims, layer_name, whisper_model
             )
             print(f"{state['step']} validation, loss_recon={val_loss_recon:.3f}")
             # log validation losses
             tb_logger.add_scalar("val/loss_recon", val_loss_recon, state["step"])
             tb_logger.add_scalar("val/loss_l1", val_loss_l1, state["step"])
+            for i, transcript in enumerate(subbed_transcripts):
+                tb_logger.add_text(f"val/reconstructed_transcript_{i}", transcript, state["step"])
             if val_loss_recon.item() < state["best_val_loss"]:
                 print("Saving new best validation")
                 state["best_val_loss"] = val_loss_recon.item()
