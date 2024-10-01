@@ -16,6 +16,9 @@ from functools import partial
 from time import perf_counter
 import argparse
 import json
+import torchaudio
+
+N_TRANSCRIPTS = 4
 
 def validate(
     model: torch.nn.Module,
@@ -25,7 +28,8 @@ def validate(
     device: torch.device,
     activation_dims: int,
     layer_name: str,
-    whisper_model: str
+    whisper_model: str,
+    log_base_transcripts
 ):
     model.eval()
     whisper_model = whisper.load_model(whisper_model)
@@ -36,8 +40,9 @@ def validate(
     )
     losses_recon = []
     losses_l1 = []
-    N_TRANSCRIPTS = 4
     subbed_transcripts = []
+    base_transcripts = []
+    base_filenames = []
 
     val_dataset = ActivationDataset(activation_folder, "val")
     val_loader = torch.utils.data.DataLoader(
@@ -55,13 +60,14 @@ def validate(
                 mels = get_mels_from_audio_path(device, filenames)
                 mels = torch.tensor(mels)
                 subbed_result = whisper_sub.forward(mels, pred)
-                base_result = whisper_sub.forward(mels, None)
-                print("subbed result:", subbed_result.text)
-                print("base result:", base_result.text)
                 subbed_transcripts.append(subbed_result.text)
+                if log_base_transcripts:
+                    base_result = whisper_sub.forward(mels, None)
+                    base_transcripts.append(base_result.text)
+                    base_filenames.append(filenames)
 
     model.train()
-    return np.array(losses_recon).mean(), np.array(losses_l1).mean(), subbed_transcripts
+    return np.array(losses_recon).mean(), np.array(losses_l1).mean(), subbed_transcripts, base_transcripts, base_filenames
 
 def mse_loss(input, target, ignored_index, reduction):
     # mse_loss with ignored_index
@@ -179,6 +185,7 @@ def train(seed: int,
     tb_logger = prepare_tb_logging(run_dir)
     model_out = run_dir + "/model"
     print("Model: %.2fM" % (sum(p.numel() for p in model.parameters()) / 1.0e6))
+    logged_base_transcripts = False
 
     optimizer = RAdam(
         dist_model.parameters(), eps=1e-5, lr=lr, weight_decay=weight_decay
@@ -274,15 +281,24 @@ def train(seed: int,
         # validate periodically
         if state["step"] % val_every == 0:
             print("Validating...")
-            val_loss_recon, val_loss_l1, subbed_transcripts = validate(
-                model, recon_loss_fn, recon_alpha, activation_folder, device, activation_dims, layer_name, whisper_model
+            val_loss_recon, val_loss_l1, subbed_transcripts, base_transcripts, base_filenames = validate(
+                model, recon_loss_fn, recon_alpha, activation_folder, device, activation_dims, layer_name, 
+                whisper_model, not logged_base_transcripts
             )
+            logged_base_transcripts = True
             print(f"{state['step']} validation, loss_recon={val_loss_recon:.3f}")
             # log validation losses
             tb_logger.add_scalar("val/loss_recon", val_loss_recon, state["step"])
             tb_logger.add_scalar("val/loss_l1", val_loss_l1, state["step"])
             for i, transcript in enumerate(subbed_transcripts):
                 tb_logger.add_text(f"val/reconstructed_transcript_{i}", transcript, state["step"])
+            if base_transcripts != []:
+                for i, transcript in enumerate(base_transcripts):
+                    tb_logger.add_text(f"val/base_transcript_{i}", transcript, state["step"])
+                for i, filename in enumerate(base_filenames):
+                    # log audio file, which is a flac at 16000 Hz
+                    audio = torchaudio.load(filename)[0]
+                    tb_logger.add_audio(f"val/audio_{i}", audio, state["step"], sample_rate=16000)
             if val_loss_recon.item() < state["best_val_loss"]:
                 print("Saving new best validation")
                 state["best_val_loss"] = val_loss_recon.item()
