@@ -136,7 +136,6 @@ def train(seed: int,
           save_every: int, 
           val_every: int, 
           checkpoint: str, 
-          checkpoint_out: str,
           recon_alpha: float
           ):
     set_seeds(seed)
@@ -149,6 +148,8 @@ def train(seed: int,
 
     # make run dir
     os.makedirs(run_dir, exist_ok=True)
+    checkpoint_out_dir = run_dir + "/checkpoints"
+    os.makedirs(checkpoint_out_dir, exist_ok=True)
 
     # setup logging
     tb_logger = prepare_tb_logging(run_dir)
@@ -244,7 +245,7 @@ def train(seed: int,
 
         # save out model periodically
         if state["step"] % save_every == 0:
-            save_checkpoint(state, checkpoint_out + ".step" + str(state["step"]))
+            save_checkpoint(state, checkpoint_out_dir + "/step" + str(state["step"]) + ".pth")
 
         # validate periodically
         if state["step"] % val_every == 0:
@@ -259,7 +260,7 @@ def train(seed: int,
             if val_loss_recon.item() < state["best_val_loss"]:
                 print("Saving new best validation")
                 state["best_val_loss"] = val_loss_recon.item()
-                save_checkpoint(state, checkpoint_out + ".bestval")
+                save_checkpoint(state, checkpoint_out_dir + "/bestval" + ".pth")
 
                 # Save PyTorch model for PR area calculation
                 pytorch_model_path = model_out[:-3] + ".bestval"
@@ -268,7 +269,7 @@ def train(seed: int,
         if steps != -1 and state["step"] >= steps:
             break
 
-    save_checkpoint(state, checkpoint_out + ".step" + str(state["step"]))
+    save_checkpoint(state, checkpoint_out_dir + "/step" + str(state["step"]) + ".pth")
 
 
 if __name__ == "__main__":
