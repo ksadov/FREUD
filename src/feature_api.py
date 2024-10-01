@@ -11,7 +11,8 @@ def load_activations(batch_folder: str) -> dict:
         batch_path = os.path.join(batch_folder, batch_file)
         batch = torch.load(batch_path)
         # if batch values are tuples, take the first element
-        if isinstance(batch, dict):
+        values_are_tuples = isinstance(list(batch.items())[0][1], tuple)
+        if values_are_tuples:
             batch = {k: v[0] for k, v in batch.items()}
         activation_map.update(batch)
     return activation_map
