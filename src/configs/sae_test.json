@@ -6,7 +6,7 @@
   "val_folder": "activations/test_block_2/test-other/encoder.blocks.2",
   "device": "cpu",
   "n_dict_components": 10,
-  "run_dir": "runs/sae_test",
+  "run_dir": "runs/sae_test_unsorted",
   "lr": 0.0001,
   "weight_decay": 0.0,
   "steps": 100000,

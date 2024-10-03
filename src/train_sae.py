@@ -326,12 +326,10 @@ def train(seed: int,
                     f"val/encoded/std_{i}", std, state["step"])
             """
             # display histogram of encoded values sorted high to low to let us see dead latents
-            encoded_means_sorted = np.argsort(encoded_means)[::-1]
             tb_logger.add_histogram(
-                "val/encoded/means", np.array(encoded_means)[encoded_means_sorted], state["step"])
-            encoded_stds_sorted = np.argsort(encoded_stds)[::-1]
+                "val/encoded/means", np.array(encoded_means), state["step"])
             tb_logger.add_histogram(
-                "val/encoded/stds", np.array(encoded_stds)[encoded_stds_sorted], state["step"])
+                "val/encoded/stds", np.array(encoded_stds), state["step"])
             for i, transcript in enumerate(subbed_transcripts):
                 tb_logger.add_text(
                     f"val/transcripts/reconstructed_{i}", transcript, state["step"])
