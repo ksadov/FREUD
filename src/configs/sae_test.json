@@ -2,7 +2,8 @@
   "seed": 0,
   "layer_name": "encoder.blocks.2",
   "whisper_model": "tiny",
-  "activation_folder": "activations/test_block_2/test-other/encoder.blocks.2",
+  "train_folder": "activations/test_block_2/test-other/encoder.blocks.2",
+  "val_folder": "activations/test_block_2/test-other/encoder.blocks.2",
   "device": "cpu",
   "n_dict_components": 1000,
   "run_dir": "runs/sae_test",
@@ -17,6 +18,6 @@
   "log_tb_every": 10,
   "save_every": 1000,
   "val_every": 10,
-  "checkpoint": null,
+  "checkpoint": "runs/sae_test/checkpoints/bestval.pth",
   "recon_alpha": 1.0
 }

@@ -24,7 +24,7 @@ def validate(
     model: torch.nn.Module,
     recon_loss_fn: torch.nn.Module,
     recon_alpha: float,
-    activation_folder: str,
+    val_folder: str,
     device: torch.device,
     activation_dims: int,
     layer_name: str,
@@ -44,7 +44,7 @@ def validate(
     base_transcripts = []
     base_filenames = []
 
-    val_dataset = ActivationDataset(activation_folder, "val")
+    val_dataset = ActivationDataset(val_folder, "val")
     val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=1, shuffle=False
     )
@@ -148,7 +148,8 @@ def load_checkpoint(
     gc.collect()
 
 def train(seed: int, 
-          activation_folder: str, 
+          train_folder: str, 
+          val_folder: str,
           device: torch.device, 
           n_dict_components: int, 
           run_dir: str, 
@@ -169,7 +170,7 @@ def train(seed: int,
           whisper_model: str
           ):
     set_seeds(seed)
-    train_dataset = ActivationDataset(activation_folder, "train")
+    train_dataset = ActivationDataset(train_folder, "train")
     # train_dataset = TokenEmbeddingDataset()
     feat_dim = train_dataset.activation_shape[-1]
     activation_dims = len(train_dataset.activation_shape)
@@ -282,7 +283,7 @@ def train(seed: int,
         if state["step"] % val_every == 0:
             print("Validating...")
             val_loss_recon, val_loss_l1, subbed_transcripts, base_transcripts, base_filenames = validate(
-                model, recon_loss_fn, recon_alpha, activation_folder, device, activation_dims, layer_name, 
+                model, recon_loss_fn, recon_alpha, val_folder, device, activation_dims, layer_name, 
                 whisper_model, not logged_base_transcripts
             )
             logged_base_transcripts = True
