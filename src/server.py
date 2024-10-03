@@ -1,3 +1,4 @@
+import argparse
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 import json
@@ -10,13 +11,10 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 global_activation_audio_map = None
 
 
-def load_activation_map():
+def load_activation_map(config_path, layer_name, split):
     global global_activation_audio_map
-    layer_name = "encoder.blocks.2.mlp.1"
-    config_path = "/home/ksadov/whisper_sae/src/configs/mlp_replication.json"
     with open(config_path, 'r') as f:
         config = json.load(f)
-    split = "train-other-500"
     global_activation_audio_map = init_map(layer_name, config, split)
     print("Activation map loaded successfully.")
 
@@ -50,5 +48,10 @@ def serve_audio(filename):
 
 
 if __name__ == '__main__':
-    load_activation_map()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config', type=str, required=True)
+    parser.add_argument('--layer_name', type=str, required=True)
+    parser.add_argument('--split', type=str, required=True)
+    args = parser.parse_args()
+    load_activation_map(args.config, args.layer_name, args.split)
+    app.run(debug=True, host='0.0.0.0', port=5555)
