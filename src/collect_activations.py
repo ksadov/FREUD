@@ -48,16 +48,13 @@ def get_activations(
         with torch.no_grad():
             result = whisper_cache.forward(mels)
         activations = whisper_cache.activations
-        print("activations", activations.keys())
         for name, act in activations.items():
-            print("Saving activations for", name)
             out_folder = create_out_folder(
                 f"{out_folder_prefix}/{split}/{name}")
             activation_batch = {}
             for i, file_name in enumerate(global_file_name):
-                print("transcript for ", file_name, transcript[i])
-                print("result for ", file_name, result[i].text)
-                print("ACTIVATION SHAPE", act[i].shape)
+                # print("transcript for ", file_name, transcript[i])
+                # print("result for ", file_name, result[i].text)
                 if save_transcriptions:
                     activation_batch[file_name] = (act[i], result[i].text)
                 else:

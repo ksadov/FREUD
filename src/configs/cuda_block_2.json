@@ -1,0 +1,14 @@
+{
+  "whisper_model": "tiny",
+  "layers": [
+    "encoder.blocks.2$"
+  ],
+  "splits": [
+    "test-other"
+  ],
+  "batch_size": 160,
+  "data_path": "/home/ksadov/whisper_sae_dataset",
+  "device": "cuda",
+  "out_folder_prefix": "activations/tiny_block_2",
+  "save_transcriptions": false
+}
