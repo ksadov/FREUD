@@ -1,6 +1,7 @@
 import torch
 import whisper
-from torch.cuda.amp import autocast
+from torch.amp import autocast
+from tqdm import tqdm
 from activation_dataset import ActivationDataset
 from librispeech_data import get_mels_from_audio_path
 from hooked_model import WhisperSubbedActivation
@@ -19,6 +20,7 @@ import json
 import torchaudio
 
 N_TRANSCRIPTS = 4
+
 
 def validate(
     model: torch.nn.Module,
@@ -48,17 +50,18 @@ def validate(
     val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=1, shuffle=False
     )
-    for i, activations in enumerate(val_loader):
-        with torch.no_grad() and autocast():
+    for i, activations in tqdm(enumerate(val_loader), total=len(val_loader)):
+        with torch.no_grad() and autocast(str(device)):
             activations, filenames = activations
             activations = activations.to(device)
             filenames = filenames[0]
             pred, c = model(activations)
-            losses_recon.append(recon_alpha * recon_loss_fn(pred, activations).item())
-            losses_l1.append(torch.norm(c, 1, dim=activation_dims).mean().item())
+            losses_recon.append(
+                recon_alpha * recon_loss_fn(pred, activations).item())
+            losses_l1.append(torch.norm(
+                c, 1, dim=activation_dims).mean().item())
             if i < N_TRANSCRIPTS:
                 mels = get_mels_from_audio_path(device, filenames)
-                mels = torch.tensor(mels)
                 subbed_result = whisper_sub.forward(mels, pred)
                 subbed_transcripts.append(subbed_result.text)
                 if log_base_transcripts:
@@ -69,6 +72,7 @@ def validate(
     model.train()
     return np.array(losses_recon).mean(), np.array(losses_l1).mean(), subbed_transcripts, base_transcripts, base_filenames
 
+
 def mse_loss(input, target, ignored_index, reduction):
     # mse_loss with ignored_index
     mask = target == ignored_index
@@ -78,12 +82,14 @@ def mse_loss(input, target, ignored_index, reduction):
     elif reduction == "None":
         return out
 
+
 def set_seeds(seed=42):
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     np.random.seed(seed)
     random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
+
 
 def save_checkpoint(state, save_path):
     """
@@ -106,6 +112,7 @@ def save_checkpoint(state, save_path):
     if "model" in state:
         state["model"] = model
 
+
 def prepare_tb_logging(path=None):
     """
     Ensures that the dir for logging exists and returns a tensorboard logger.
@@ -116,10 +123,11 @@ def prepare_tb_logging(path=None):
     logdir_path.mkdir(parents=True, exist_ok=True)
     return SummaryWriter(logdir_path, flush_secs=10)
 
+
 def load_checkpoint(
     state,
     load_path,
-    device="cpu",
+    device,
 ):
     """
     Updates a generic state dictionary. Takes the items in 'checkpoint', and pushes them
@@ -147,24 +155,25 @@ def load_checkpoint(
 
     gc.collect()
 
-def train(seed: int, 
-          train_folder: str, 
+
+def train(seed: int,
+          train_folder: str,
           val_folder: str,
-          device: torch.device, 
-          n_dict_components: int, 
-          run_dir: str, 
-          lr: float, 
-          weight_decay: float, 
-          steps: int, 
-          grad_acc_steps: int, 
-          clip_thresh: float, 
-          batch_size: int, 
-          dl_max_workers: int, 
-          log_every: int, 
-          log_tb_every: int, 
-          save_every: int, 
-          val_every: int, 
-          checkpoint: str, 
+          device: torch.device,
+          n_dict_components: int,
+          run_dir: str,
+          lr: float,
+          weight_decay: float,
+          steps: int,
+          grad_acc_steps: int,
+          clip_thresh: float,
+          batch_size: int,
+          dl_max_workers: int,
+          log_every: int,
+          log_tb_every: int,
+          save_every: int,
+          val_every: int,
+          checkpoint: str,
           recon_alpha: float,
           layer_name: str,
           whisper_model: str
@@ -185,7 +194,8 @@ def train(seed: int,
     # setup logging
     tb_logger = prepare_tb_logging(run_dir)
     model_out = run_dir + "/model"
-    print("Model: %.2fM" % (sum(p.numel() for p in model.parameters()) / 1.0e6))
+    print("Model: %.2fM" % (sum(p.numel()
+          for p in model.parameters()) / 1.0e6))
     logged_base_transcripts = False
 
     optimizer = RAdam(
@@ -201,7 +211,8 @@ def train(seed: int,
     }
 
     train_loader = iter(
-        torch.utils.data.DataLoader(train_dataset, shuffle=True, **dataloader_kwargs)
+        torch.utils.data.DataLoader(
+            train_dataset, shuffle=True, **dataloader_kwargs)
     )
 
     # Object that contains the main state of the train loop
@@ -236,12 +247,13 @@ def train(seed: int,
                 activations = activations.to(device)
             except StopIteration:
                 train_loader = iter(
-                    torch.utils.data.DataLoader(train_dataset, shuffle=True, **dataloader_kwargs)
+                    torch.utils.data.DataLoader(
+                        train_dataset, shuffle=True, **dataloader_kwargs)
                 )
                 activations, filenames = next(train_loader)
                 activations = activations.to(device)
             # Forward pass
-            with autocast():
+            with autocast(str(device)):
                 start_time = perf_counter()
                 pred, c = dist_model(activations)  # bsz, seq_len, n_classes
                 forward_time += perf_counter() - start_time
@@ -271,39 +283,49 @@ def train(seed: int,
             # log training losses
             if state["step"] % log_tb_every == 0:
                 tb_logger.add_scalar("train/loss", loss, state["step"])
-                tb_logger.add_scalar("train/loss_recon", meta["loss_recon"], state["step"])
-                tb_logger.add_scalar("train/loss_l1", meta["loss_l1"], state["step"])
-                tb_logger.add_scalar("train/lr", scheduler.get_last_lr()[0], state["step"])
+                tb_logger.add_scalar("train/loss_recon",
+                                     meta["loss_recon"], state["step"])
+                tb_logger.add_scalar(
+                    "train/loss_l1", meta["loss_l1"], state["step"])
+                tb_logger.add_scalar(
+                    "train/lr", scheduler.get_last_lr()[0], state["step"])
 
         # save out model periodically
         if state["step"] % save_every == 0:
-            save_checkpoint(state, checkpoint_out_dir + "/step" + str(state["step"]) + ".pth")
+            save_checkpoint(state, checkpoint_out_dir +
+                            "/step" + str(state["step"]) + ".pth")
 
         # validate periodically
         if state["step"] % val_every == 0:
             print("Validating...")
             val_loss_recon, val_loss_l1, subbed_transcripts, base_transcripts, base_filenames = validate(
-                model, recon_loss_fn, recon_alpha, val_folder, device, activation_dims, layer_name, 
+                model, recon_loss_fn, recon_alpha, val_folder, device, activation_dims, layer_name,
                 whisper_model, not logged_base_transcripts
             )
             logged_base_transcripts = True
-            print(f"{state['step']} validation, loss_recon={val_loss_recon:.3f}")
+            print(
+                f"{state['step']} validation, loss_recon={val_loss_recon:.3f}")
             # log validation losses
-            tb_logger.add_scalar("val/loss_recon", val_loss_recon, state["step"])
+            tb_logger.add_scalar(
+                "val/loss_recon", val_loss_recon, state["step"])
             tb_logger.add_scalar("val/loss_l1", val_loss_l1, state["step"])
             for i, transcript in enumerate(subbed_transcripts):
-                tb_logger.add_text(f"val/transcripts/reconstructed_{i}", transcript, state["step"])
+                tb_logger.add_text(
+                    f"val/transcripts/reconstructed_{i}", transcript, state["step"])
             if base_transcripts != []:
                 for i, transcript in enumerate(base_transcripts):
-                    tb_logger.add_text(f"val/transcripts/base_{i}", transcript, state["step"])
+                    tb_logger.add_text(
+                        f"val/transcripts/base_{i}", transcript, state["step"])
                 for i, filename in enumerate(base_filenames):
                     # log audio file, which is a flac at 16000 Hz
                     audio = torchaudio.load(filename)[0]
-                    tb_logger.add_audio(f"val/transcripts/audio_{i}", audio, state["step"], sample_rate=16000)
+                    tb_logger.add_audio(
+                        f"val/transcripts/audio_{i}", audio, state["step"], sample_rate=16000)
             if val_loss_recon.item() < state["best_val_loss"]:
                 print("Saving new best validation")
                 state["best_val_loss"] = val_loss_recon.item()
-                save_checkpoint(state, checkpoint_out_dir + "/bestval" + ".pth")
+                save_checkpoint(state, checkpoint_out_dir +
+                                "/bestval" + ".pth")
 
                 # Save PyTorch model for PR area calculation
                 pytorch_model_path = model_out[:-3] + ".bestval"
@@ -312,7 +334,8 @@ def train(seed: int,
         if steps != -1 and state["step"] >= steps:
             break
 
-    save_checkpoint(state, checkpoint_out_dir + "/step" + str(state["step"]) + ".pth")
+    save_checkpoint(state, checkpoint_out_dir +
+                    "/step" + str(state["step"]) + ".pth")
 
 
 if __name__ == "__main__":
@@ -322,6 +345,5 @@ if __name__ == "__main__":
     # load config json
     with open(args.config, "r") as f:
         config = json.load(f)
+    config["device"] = torch.device(config["device"])
     train(**config)
-
-   

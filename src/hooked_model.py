@@ -125,10 +125,12 @@ class WhisperActivationCache(BaseActivationModule):
 
         return hook
 
+
 class WhisperSubbedActivation(torch.nn.Module):
     """
     Whisper but we can substitute a custom activation for one of the layers
     """
+
     def __init__(
         self,
         model: torch.nn.Module,
@@ -151,14 +153,14 @@ class WhisperSubbedActivation(torch.nn.Module):
         if substitute_activation is not None:
             forward_hook.remove()
         return output
-    
+
     def register_hook(self, substitution_activation: Tensor):
         for name, module in self.model.named_modules():
             if name == self.substitution_layer:
                 hook_fn = self._get_substitution_hook(substitution_activation)
                 forward_hook = module.register_forward_hook(hook_fn)
                 return forward_hook
-    
+
     def _get_substitution_hook(self, substitution_activation):
         def hook(module, input, output):
             return substitution_activation

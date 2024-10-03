@@ -38,7 +38,7 @@ def get_activations(
     )
     whisper_cache.model.eval()
     dataset = LibriSpeechDataset(data_path, split, device)
-    dataset = torch.utils.data.Subset(dataset, range(1000))
+    # dataset = torch.utils.data.Subset(dataset, range(1000))
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
     batch_id = 0

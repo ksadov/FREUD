@@ -4,7 +4,9 @@
     "encoder.blocks.2$"
   ],
   "splits": [
-    "test-other"
+    "dev-other",
+    "test-other",
+    "train-other-500"
   ],
   "batch_size": 160,
   "data_path": "/home/ksadov/whisper_sae_dataset",
