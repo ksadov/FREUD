@@ -45,6 +45,7 @@ def validate(
     subbed_transcripts = []
     base_transcripts = []
     base_filenames = []
+    encoded_values = [[]] * model.n_dict_components
 
     val_dataset = ActivationDataset(val_folder, "val")
     val_loader = torch.utils.data.DataLoader(
@@ -56,6 +57,9 @@ def validate(
             activations = activations.to(device)
             filenames = filenames[0]
             pred, c = model(activations)
+            detached_c = c.detach().cpu().numpy()
+            for i in range(model.n_dict_components):
+                encoded_values[i].append(detached_c[:, i])
             losses_recon.append(
                 recon_alpha * recon_loss_fn(pred, activations).item())
             losses_l1.append(torch.norm(
@@ -70,7 +74,10 @@ def validate(
                     base_filenames.append(filenames)
 
     model.train()
-    return np.array(losses_recon).mean(), np.array(losses_l1).mean(), subbed_transcripts, base_transcripts, base_filenames
+    encoded_means = [np.mean(np.array(x)) for x in encoded_values]
+    encoded_stds = [np.std(np.array(x)) for x in encoded_values]
+    return (np.array(losses_recon).mean(), np.array(losses_l1).mean(), subbed_transcripts, base_transcripts, 
+            base_filenames, encoded_means, encoded_stds)
 
 
 def mse_loss(input, target, ignored_index, reduction):
@@ -298,10 +305,11 @@ def train(seed: int,
         # validate periodically
         if state["step"] % val_every == 0:
             print("Validating...")
-            val_loss_recon, val_loss_l1, subbed_transcripts, base_transcripts, base_filenames = validate(
-                model, recon_loss_fn, recon_alpha, val_folder, device, activation_dims, layer_name,
-                whisper_model, not logged_base_transcripts
-            )
+            val_loss_recon, val_loss_l1, subbed_transcripts, base_transcripts, base_filenames, \
+                encoded_means, encoded_stds = validate(
+                    model, recon_loss_fn, recon_alpha, val_folder, device, activation_dims, layer_name,
+                    whisper_model, not logged_base_transcripts
+                    )
             logged_base_transcripts = True
             print(
                 f"{state['step']} validation, loss_recon={val_loss_recon:.3f}")
@@ -309,6 +317,21 @@ def train(seed: int,
             tb_logger.add_scalar(
                 "val/loss_recon", val_loss_recon, state["step"])
             tb_logger.add_scalar("val/loss_l1", val_loss_l1, state["step"])
+            # not logging individual means and stds as it's too verbose
+            """
+            for i, (mean, std) in enumerate(zip(encoded_means, encoded_stds)):
+                tb_logger.add_scalar(
+                    f"val/encoded/mean_{i}", mean, state["step"])
+                tb_logger.add_scalar(
+                    f"val/encoded/std_{i}", std, state["step"])
+            """
+            # display histogram of encoded values sorted high to low to let us see dead latents
+            encoded_means_sorted = np.argsort(encoded_means)[::-1]
+            tb_logger.add_histogram(
+                "val/encoded/means", np.array(encoded_means)[encoded_means_sorted], state["step"])
+            encoded_stds_sorted = np.argsort(encoded_stds)[::-1]
+            tb_logger.add_histogram(
+                "val/encoded/stds", np.array(encoded_stds)[encoded_stds_sorted], state["step"])
             for i, transcript in enumerate(subbed_transcripts):
                 tb_logger.add_text(
                     f"val/transcripts/reconstructed_{i}", transcript, state["step"])

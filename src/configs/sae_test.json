@@ -5,7 +5,7 @@
   "train_folder": "activations/test_block_2/test-other/encoder.blocks.2",
   "val_folder": "activations/test_block_2/test-other/encoder.blocks.2",
   "device": "cpu",
-  "n_dict_components": 1000,
+  "n_dict_components": 10,
   "run_dir": "runs/sae_test",
   "lr": 0.0001,
   "weight_decay": 0.0,
@@ -18,6 +18,6 @@
   "log_tb_every": 10,
   "save_every": 1000,
   "val_every": 10,
-  "checkpoint": "runs/sae_test/checkpoints/bestval.pth",
+  "checkpoint": null,
   "recon_alpha": 1.0
 }
