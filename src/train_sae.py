@@ -204,6 +204,26 @@ def train(seed: int,
 
     # setup logging
     tb_logger = prepare_tb_logging(run_dir)
+    # add hparams
+    tb_logger.add_hparams(
+        {
+            "lr": lr,
+            "weight_decay": weight_decay,
+            "steps": steps,
+            "grad_acc_steps": grad_acc_steps,
+            "clip_thresh": clip_thresh,
+            "batch_size": batch_size,
+            "dl_max_workers": dl_max_workers,
+            "log_every": log_every,
+            "log_tb_every": log_tb_every,
+            "save_every": save_every,
+            "val_every": val_every,
+            "recon_alpha": recon_alpha,
+            "layer_name": layer_name,
+            "whisper_model": whisper_model
+        },
+        {},
+    )
     model_out = run_dir + "/model"
     print("Model: %.2fM" % (sum(p.numel()
           for p in model.parameters()) / 1.0e6))
