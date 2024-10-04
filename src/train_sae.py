@@ -45,21 +45,22 @@ def validate(
     subbed_transcripts = []
     base_transcripts = []
     base_filenames = []
-    encoded_values = [[]] * model.n_dict_components
 
     val_dataset = ActivationDataset(val_folder, "val")
     val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=1, shuffle=False
     )
+    encoded_magnitude_values = torch.zeros(
+        (len(val_loader), model.n_dict_components)).to(device)
     for i, activations in tqdm(enumerate(val_loader), total=len(val_loader)):
         with torch.no_grad() and autocast(str(device)):
             activations, filenames = activations
             activations = activations.to(device)
             filenames = filenames[0]
             pred, c = model(activations)
-            detached_c = c.detach().cpu().numpy()
-            for i in range(model.n_dict_components):
-                encoded_values[i].append(detached_c[:, i])
+            detached_c = torch.abs(c.detach()).squeeze()
+            c_max = torch.max(detached_c, dim=0).values
+            encoded_magnitude_values[i] = c_max
             losses_recon.append(
                 recon_alpha * recon_loss_fn(pred, activations).item())
             losses_l1.append(torch.norm(
@@ -74,10 +75,13 @@ def validate(
                     base_filenames.append(filenames)
 
     model.train()
-    encoded_means = [np.mean(np.array(x)) for x in encoded_values]
-    encoded_stds = [np.std(np.array(x)) for x in encoded_values]
-    return (np.array(losses_recon).mean(), np.array(losses_l1).mean(), subbed_transcripts, base_transcripts, 
-            base_filenames, encoded_means, encoded_stds)
+    print("Calculating means...")
+    encoded_mag_means = torch.mean(
+        encoded_magnitude_values, dim=0).cpu().numpy()
+    print("Calculating stds...")
+    encoded_mag_stds = torch.std(encoded_magnitude_values, dim=0).cpu().numpy()
+    return (np.array(losses_recon).mean(), np.array(losses_l1).mean(), subbed_transcripts, base_transcripts,
+            base_filenames, encoded_mag_means, encoded_mag_stds)
 
 
 def mse_loss(input, target, ignored_index, reduction):
@@ -306,10 +310,10 @@ def train(seed: int,
         if state["step"] % val_every == 0:
             print("Validating...")
             val_loss_recon, val_loss_l1, subbed_transcripts, base_transcripts, base_filenames, \
-                encoded_means, encoded_stds = validate(
+                encoded_mag_means, encoded_mag_stds = validate(
                     model, recon_loss_fn, recon_alpha, val_folder, device, activation_dims, layer_name,
                     whisper_model, not logged_base_transcripts
-                    )
+                )
             logged_base_transcripts = True
             print(
                 f"{state['step']} validation, loss_recon={val_loss_recon:.3f}")
@@ -327,9 +331,9 @@ def train(seed: int,
             """
             # display histogram of encoded values sorted high to low to let us see dead latents
             tb_logger.add_histogram(
-                "val/encoded/means", np.array(encoded_means), state["step"])
+                "val/encoded/magnitude_means", np.array(encoded_mag_means), state["step"])
             tb_logger.add_histogram(
-                "val/encoded/stds", np.array(encoded_stds), state["step"])
+                "val/encoded/magnitude_stds", np.array(encoded_mag_stds), state["step"])
             for i, transcript in enumerate(subbed_transcripts):
                 tb_logger.add_text(
                     f"val/transcripts/reconstructed_{i}", transcript, state["step"])
