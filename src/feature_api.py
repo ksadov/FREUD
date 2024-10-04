@@ -4,10 +4,13 @@ import torchaudio
 from librispeech_data import LibriSpeechDataset
 from constants import SAMPLE_RATE, TIMESTEP_S
 
+def get_batch_folder(config: dict, split: str, layer_name: str) -> str:
+    batch_folder = f"{config['out_folder_prefix']}/{split}/{layer_name}"
+    return batch_folder
 
 def load_activations(batch_folder: str) -> dict:
     activation_map = {}
-    for batch_file in os.listdir(batch_folder)[:50]:
+    for batch_file in os.listdir(batch_folder):
         batch_path = os.path.join(batch_folder, batch_file)
         batch = torch.load(batch_path)
         # if batch values are tuples, take the first element
@@ -19,7 +22,7 @@ def load_activations(batch_folder: str) -> dict:
 
 
 def init_map(layer_name: str, config: dict, split: str) -> torch.Tensor:
-    batch_folder = f"{config['out_folder_prefix']}/{split}/{layer_name}"
+    batch_folder = get_batch_folder(config, split, layer_name)
     activation_map = load_activations(batch_folder)
     activation_audio_map = activation_map
     return activation_audio_map
@@ -58,11 +61,34 @@ def top_activating_files(activation_audio_map: dict, n_files: int, neuron_idx: i
     top.sort(key=lambda x: x[2], reverse=True)
     return top[:n_files]
 
+def search_activations(batch_folder, neuron_idx, n_files):
+    # activation map may be too big to load all at once
+    # so we just dynamically load the activations for the batch
+    # and return the top n files
+    print("Searching activations...")
+    top = []
+    for batch_file in os.listdir(batch_folder):
+        batch_path = os.path.join(batch_folder, batch_file)
+        batch = torch.load(batch_path)
+        top_batch_files = top_activating_files(batch, n_files, neuron_idx)
+        if len(top) < n_files:
+            top.extend(top_batch_files)
+        else:
+            top.extend(top_batch_files)
+            top.sort(key=lambda x: x[2], reverse=True)
+            top = top[:n_files]
+    return top
 
-def get_top_activations(activation_audio_map, n_files, neuron_idx) -> tuple[list[str], list[torch.Tensor]]:
-    top = top_activating_files(
-        activation_audio_map, n_files, neuron_idx)
-    print("top", top)
+
+def get_top_activations(activation_audio_map: dict, 
+                        batch_dir: str, 
+                        n_files: int, 
+                        neuron_idx: int) -> tuple[list[str], list[torch.Tensor]]:
+    if activation_audio_map is not None:
+        top = top_activating_files(
+            activation_audio_map, n_files, neuron_idx)
+    else:
+        top = search_activations(batch_dir, neuron_idx, n_files)
     top_files = [x[0] for x in top]
     activations = [x[1] for x in top]
     return top_files, activations
