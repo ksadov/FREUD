@@ -53,7 +53,8 @@ def validate(
     )
     encoded_magnitude_values = torch.zeros(
         (len(val_loader), model.n_dict_components)).to(device)
-    context_manager = autocast(device_type=str(device)) if device == torch.device("cuda") else nullcontext()
+    context_manager = autocast(device_type=str(
+        device)) if device == torch.device("cuda") else nullcontext()
 
     for i, activations in tqdm(enumerate(val_loader), total=len(val_loader)):
         with torch.no_grad(), context_manager:
@@ -208,25 +209,19 @@ def train(seed: int,
     # setup logging
     tb_logger = prepare_tb_logging(run_dir)
     # add hparams
-    tb_logger.add_hparams(
-        {
-            "lr": lr,
-            "weight_decay": weight_decay,
-            "steps": steps,
-            "grad_acc_steps": grad_acc_steps,
-            "clip_thresh": clip_thresh,
-            "batch_size": batch_size,
-            "dl_max_workers": dl_max_workers,
-            "log_every": log_every,
-            "log_tb_every": log_tb_every,
-            "save_every": save_every,
-            "val_every": val_every,
-            "recon_alpha": recon_alpha,
-            "layer_name": layer_name,
-            "whisper_model": whisper_model
-        },
-        {},
-    )
+    hparam_dict = {
+        "lr": lr,
+        "weight_decay": weight_decay,
+        "steps": steps,
+        "grad_acc_steps": grad_acc_steps,
+        "clip_thresh": clip_thresh,
+        "batch_size": batch_size,
+        "recon_alpha": recon_alpha,
+        "n_dict_components": n_dict_components,
+        "layer_name": layer_name,
+        "whisper_model": whisper_model,
+    }
+    tb_logger.add_text("hparams", json.dumps(hparam_dict, indent=4))
     model_out = run_dir + "/model"
     print("Model: %.2fM" % (sum(p.numel()
           for p in model.parameters()) / 1.0e6))
