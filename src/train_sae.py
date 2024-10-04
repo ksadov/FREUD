@@ -18,6 +18,7 @@ from time import perf_counter
 import argparse
 import json
 import torchaudio
+from contextlib import nullcontext
 
 N_TRANSCRIPTS = 4
 
@@ -52,8 +53,10 @@ def validate(
     )
     encoded_magnitude_values = torch.zeros(
         (len(val_loader), model.n_dict_components)).to(device)
+    context_manager = autocast(device_type=str(device)) if device == torch.device("cuda") else nullcontext()
+
     for i, activations in tqdm(enumerate(val_loader), total=len(val_loader)):
-        with torch.no_grad() and autocast(str(device)):
+        with torch.no_grad(), context_manager:
             activations, filenames = activations
             activations = activations.to(device)
             filenames = filenames[0]
