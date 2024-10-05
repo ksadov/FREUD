@@ -334,9 +334,6 @@ def train(seed: int,
             meta["loss_l1"] = sum(losses_l1) / grad_acc_steps
             meta["time_backward"] = backward_time
 
-            if state["step"] % log_every == 0:
-                print(f"step {state['step']}, loss {loss.item():.3f}")
-
             # Logging, saving, and validation code (unchanged)
             # ...
 
