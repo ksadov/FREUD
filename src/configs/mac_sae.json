@@ -1,0 +1,15 @@
+{
+  "model": "runs/sae_test/checkpoints",
+  "model_type": "sae",
+  "layers": [
+    "encoder.blocks.2.mlp.1"
+  ],
+  "splits": [
+    "test-other"
+  ],
+  "batch_size": 16,
+  "data_path": "/Users/ksadov/Documents/ml_experiments/whisper_sae/librispeech_data",
+  "device": "cpu",
+  "out_folder_prefix": "activations/sae_test",
+  "save_transcriptions": false
+}

@@ -19,11 +19,14 @@ def load_activation_map(config_path, layer_name, split, init_at_start):
     global global_init_at_start
     with open(config_path, 'r') as f:
         config = json.load(f)
-    if init_at_start:
-        global_init_at_start = True
-        global_activation_audio_map = init_map(layer_name, config, split)
+    if config['model_type'] == 'sae':
+        raise NotImplementedError("SAE model not supported yet.")
     else:
-        global_batch_dir = get_batch_folder(config, split, layer_name)
+        if init_at_start:
+            global_init_at_start = True
+            global_activation_audio_map = init_map(layer_name, config, split)
+        else:
+            global_batch_dir = get_batch_folder(config, split, layer_name)
     print("Activation map loaded successfully.")
 
 
