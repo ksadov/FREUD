@@ -1,5 +1,6 @@
 {
-  "whisper_model": "tiny",
+  "model": "tiny",
+  "model_type": "whisper",
   "layers": [
     "encoder.blocks.2.mlp.1"
   ],

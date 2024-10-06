@@ -83,18 +83,20 @@ def search_activations(batch_folder, neuron_idx, n_files, max_val):
             top = top[:n_files]
     return top
 
-
-def get_top_activations(activation_audio_map: dict, 
-                        batch_dir: str, 
+def make_top_fn(activation_audio_map, batch_dir):
+    if activation_audio_map is not None:
+        return lambda neuron_idx, n_files, max_val: top_activating_files(
+            activation_audio_map, n_files, neuron_idx, max_val)
+    else:
+        return lambda neuron_idx, n_files, max_val: search_activations(
+            batch_dir, neuron_idx, n_files, max_val)
+        
+def get_top_activations(top_fn: callable,
                         n_files: int, 
                         neuron_idx: int,
                         max_val: Optional[float] = None
                         ) -> tuple[list[str], list[torch.Tensor]]:
-    if activation_audio_map is not None:
-        top = top_activating_files(
-            activation_audio_map, n_files, neuron_idx, max_val)
-    else:
-        top = search_activations(batch_dir, neuron_idx, n_files, max_val)
+    top = top_fn(neuron_idx, n_files, max_val)
     top_files = [x[0] for x in top]
     activations = [x[1] for x in top]
     return top_files, activations
