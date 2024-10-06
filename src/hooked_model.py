@@ -7,7 +7,9 @@ from torch import Tensor
 import whisper
 from natsort import natsorted
 import regex
-
+import torchaudio
+from constants import SAMPLE_RATE
+from librispeech_data import get_mels_from_audio_path
 
 class BaseActivationModule(ABC):
     def __init__(
@@ -166,3 +168,15 @@ class WhisperSubbedActivation(torch.nn.Module):
             return substitution_activation
 
         return hook
+    
+def init_cache(whisper_model: str, activation_str: str, device: torch.device) -> WhisperActivationCache:
+    whisper_model = whisper.load_model(whisper_model)
+    whisper_model.eval()
+    activation_regex = [activation_str + "$"]
+    return WhisperActivationCache(model=whisper_model, activation_regex=activation_regex, device=device)
+
+def activations_from_audio(model: WhisperActivationCache, audio_fname: str) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
+    with torch.no_grad():
+        mel = get_mels_from_audio_path(model.device, audio_fname)
+        result = model.forward(mel)
+    return model.activations, result

@@ -7,6 +7,7 @@ from typing import Optional, Union
 from subprocess import CalledProcessError, run
 import numpy as np
 import whisper
+from typing import Generator
 
 from functools import lru_cache
 
@@ -97,11 +98,12 @@ def pad_or_trim(array, length: int = N_SAMPLES, *, axis: int = -1):
 def get_mels_from_audio_path(
     device, audio_path: str, start_time_s: Optional[float] = None, end_time_s: Optional[float] = None
 ):
-    audio = load_audio(audio_path)
-    if start_time_s is not None and end_time_s is not None:
-        audio = trim_audio(audio, start_time_s, end_time_s)
-    audio = pad_or_trim(audio.flatten())
-    mels = log_mel_spectrogram(audio, device=device)
+    with torch.no_grad():
+        audio = load_audio(audio_path)
+        if start_time_s is not None and end_time_s is not None:
+            audio = trim_audio(audio, start_time_s, end_time_s)
+        audio = pad_or_trim(audio.flatten())
+        mels = log_mel_spectrogram(audio, device=device)
     return mels
 
 
@@ -188,7 +190,7 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx) -> dict:
         file_name, sr, transcript, speaker_id, chapter_id, utterance_id = self.dataset.get_metadata(
             idx)
-        global_file_name = os.path.join(self.root, "LibriSpeech", file_name)
+        global_file_name = os.path.join(self.root, file_name)
         if self.calculate_mel:
             mel = get_mels_from_audio_path(self.device, global_file_name)
         else:
@@ -198,6 +200,12 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
     def __len__(self) -> int:
         return len(self.dataset)
 
+def get_librispeech_files(root: str, split: str) -> Generator[str, None, None]:
+    ls_folder = os.path.join(root, "LibriSpeech", split)
+    for root, dirs, files in os.walk(ls_folder):
+        for file in files:
+            if file.endswith(".flac"):
+                yield os.path.join(root, file)
 
 def test_librispeech_dataset():
     device = torch.device("cuda")
