@@ -126,6 +126,7 @@ const AudioPlayer = ({ audioFile, activations }) => {
 
 const AudioPlayerWithActivation = () => {
   const [neuronIdx, setNeuronIdx] = useState('');
+  const [maxVal, setMaxVal] = useState('');
   const [topFiles, setTopFiles] = useState([]);
   const [activations, setActivations] = useState([]);
   const [isServerReady, setIsServerReady] = useState(false);
@@ -152,6 +153,10 @@ const AudioPlayerWithActivation = () => {
     setNeuronIdx(event.target.value);
   };
 
+  const handleMaxValChange = (event) => {
+    setMaxVal(event.target.value);
+  };
+
   const handleSubmit = (event) => {
     event.preventDefault();
     if (neuronIdx !== '') {
@@ -159,14 +164,25 @@ const AudioPlayerWithActivation = () => {
       if (!isNaN(idx) && idx >= 0) {
         fetchTopFiles(idx);
       } else {
-        setError('Please enter a valid non-negative integer');
+        setError('Please enter a valid non-negative integer for neuron index');
       }
     }
   };
 
   const fetchTopFiles = (idx) => {
     setIsLoading(true);
-    fetch(`${API_BASE_URL}/top_files?neuron_idx=${idx}&n_files=4`)
+    let url = `${API_BASE_URL}/top_files?neuron_idx=${idx}&n_files=20`;
+    if (maxVal !== '') {
+      const maxValFloat = parseFloat(maxVal);
+      if (!isNaN(maxValFloat)) {
+        url += `&max_val=${maxValFloat}`;
+      } else {
+        setError('Please enter a valid number for max value');
+        setIsLoading(false);
+        return;
+      }
+    }
+    fetch(url)
       .then(response => response.json())
       .then(data => {
         setTopFiles(data.top_files);
@@ -184,17 +200,33 @@ const AudioPlayerWithActivation = () => {
     <div className="w-full max-w-3xl mx-auto p-4">
       {error && <p className="text-red-500">{error}</p>}
       <form onSubmit={handleSubmit} className="mb-4">
-        <input
-          type="number"
-          value={neuronIdx}
-          onChange={handleNeuronChange}
-          className="px-2 py-1 border rounded"
-          min="0"
-          disabled={isLoading || !isServerReady || !!error}
-        />
+        <div className="mb-2">
+          <label htmlFor="neuronIdx" className="mr-2">Neuron Index:</label>
+          <input
+            id="neuronIdx"
+            type="number"
+            value={neuronIdx}
+            onChange={handleNeuronChange}
+            className="px-2 py-1 border rounded"
+            min="0"
+            disabled={isLoading || !isServerReady || !!error}
+          />
+        </div>
+        <div className="mb-2">
+          <label htmlFor="maxVal" className="mr-2">Max Activation Value (optional):</label>
+          <input
+            id="maxVal"
+            type="number"
+            value={maxVal}
+            onChange={handleMaxValChange}
+            className="px-2 py-1 border rounded"
+            step="any"
+            disabled={isLoading || !isServerReady || !!error}
+          />
+        </div>
         <button
           type="submit"
-          className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 ml-2"
+          className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
           disabled={isLoading || !isServerReady || !!error}
         >
           Update

@@ -1,0 +1,14 @@
+{
+  "whisper_model": "tiny",
+  "layers": [
+    "encoder.blocks.2.mlp.1"
+  ],
+  "splits": [
+    "test-other"
+  ],
+  "batch_size": 16,
+  "data_path": "/Users/ksadov/Documents/ml_experiments/whisper_sae/librispeech_data",
+  "device": "cpu",
+  "out_folder_prefix": "activations/test_block_2_mlp_1",
+  "save_transcriptions": false
+}

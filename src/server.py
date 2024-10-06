@@ -39,8 +39,10 @@ def status():
 def get_top_files():
     neuron_idx = int(request.args.get('neuron_idx', 0))
     n_files = int(request.args.get('n_files', 10))
+    max_val_arg = request.args.get('max_val', None)
+    max_val = float(max_val_arg) if max_val_arg is not None else None
     top_files, activations = get_top_activations(
-        global_activation_audio_map, global_batch_dir, n_files, neuron_idx)
+        global_activation_audio_map, global_batch_dir, n_files, neuron_idx, max_val)
     activations = [x.tolist() for x in activations]
     return jsonify({"top_files": top_files, "activations": activations})
 

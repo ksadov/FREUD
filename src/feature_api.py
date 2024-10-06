@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 import torch
 import torchaudio
 from librispeech_data import LibriSpeechDataset
@@ -48,20 +49,21 @@ def get_top_activating_files(activation_audio_map: dict, n_files: int, neuron_id
     return [x[1] for x in top_files[:n_files]]
 
 
-def top_activating_files(activation_audio_map: dict, n_files: int, neuron_idx: int) -> list:
+def top_activating_files(activation_audio_map: dict, n_files: int, neuron_idx: int, max_val: Optional[float]) -> list:
     top = []
     for audio_file, activation in activation_audio_map.items():
         activation_at_idx = activation.transpose(0, 1)[neuron_idx]
         trimmed_activation = trim_activation(audio_file, activation_at_idx)
         max_activation_value = trimmed_activation.max().item()
-        max_activation_loc = trimmed_activation.argmax().item()
-        max_activation_time = max_activation_loc * TIMESTEP_S
-        top.append((audio_file, trimmed_activation,
-                    max_activation_value, max_activation_time))
+        if max_val is None or max_activation_value < max_val:
+            max_activation_loc = trimmed_activation.argmax().item()
+            max_activation_time = max_activation_loc * TIMESTEP_S
+            top.append((audio_file, trimmed_activation,
+                        max_activation_value, max_activation_time))
     top.sort(key=lambda x: x[2], reverse=True)
     return top[:n_files]
 
-def search_activations(batch_folder, neuron_idx, n_files):
+def search_activations(batch_folder, neuron_idx, n_files, max_val):
     # activation map may be too big to load all at once
     # so we just dynamically load the activations for the batch
     # and return the top n files
@@ -70,7 +72,7 @@ def search_activations(batch_folder, neuron_idx, n_files):
     for batch_file in os.listdir(batch_folder):
         batch_path = os.path.join(batch_folder, batch_file)
         batch = torch.load(batch_path)
-        top_batch_files = top_activating_files(batch, n_files, neuron_idx)
+        top_batch_files = top_activating_files(batch, n_files, neuron_idx, max_val)
         if len(top) < n_files:
             top.extend(top_batch_files)
         else:
@@ -83,12 +85,14 @@ def search_activations(batch_folder, neuron_idx, n_files):
 def get_top_activations(activation_audio_map: dict, 
                         batch_dir: str, 
                         n_files: int, 
-                        neuron_idx: int) -> tuple[list[str], list[torch.Tensor]]:
+                        neuron_idx: int,
+                        max_val: Optional[float] = None
+                        ) -> tuple[list[str], list[torch.Tensor]]:
     if activation_audio_map is not None:
         top = top_activating_files(
-            activation_audio_map, n_files, neuron_idx)
+            activation_audio_map, n_files, neuron_idx, max_val)
     else:
-        top = search_activations(batch_dir, neuron_idx, n_files)
+        top = search_activations(batch_dir, neuron_idx, n_files, max_val)
     top_files = [x[0] for x in top]
     activations = [x[1] for x in top]
     return top_files, activations
