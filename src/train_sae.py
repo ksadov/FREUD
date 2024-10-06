@@ -343,6 +343,8 @@ def train(seed: int,
 
         pbar.close()
 
+        pbar.close()
+        
         if steps != -1 and state["step"] >= steps:
             break
 
