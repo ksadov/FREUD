@@ -4,6 +4,7 @@ import torch
 import torchaudio
 from librispeech_data import LibriSpeechDataset
 from constants import SAMPLE_RATE, TIMESTEP_S
+from autoencoder import init_sae
 
 
 def get_batch_folder(config: dict, split: str, layer_name: str) -> str:
@@ -70,6 +71,8 @@ def search_activations(batch_folder, neuron_idx, n_files, max_val):
     # so we just dynamically load the activations for the batch
     # and return the top n files
     print("Searching activations...")
+    print(f"Neuron index: {neuron_idx}")
+    print(f"N files: {n_files}")
     top = []
     for batch_file in os.listdir(batch_folder):
         batch_path = os.path.join(batch_folder, batch_file)
@@ -83,17 +86,23 @@ def search_activations(batch_folder, neuron_idx, n_files, max_val):
             top = top[:n_files]
     return top
 
-def make_top_fn(activation_audio_map, batch_dir):
-    if activation_audio_map is not None:
+def make_top_fn(config: dict, layer_name: str, split: str, init_at_start: bool, checkpoint: Optional[str]) -> callable:
+    if init_at_start:
+        activation_audio_map = init_map(layer_name, config, split)
         return lambda neuron_idx, n_files, max_val: top_activating_files(
             activation_audio_map, n_files, neuron_idx, max_val)
-    else:
+    elif config['model_type'] == 'sae':
+        raise NotImplementedError("SAE model not supported yet.")
+    elif config['model_type'] == 'whisper':
+        batch_dir = get_batch_folder(config, split, layer_name)
         return lambda neuron_idx, n_files, max_val: search_activations(
             batch_dir, neuron_idx, n_files, max_val)
+    else:
+        raise ValueError(f"Invalid model type {config['model_type']}, must be 'sae' or 'whisper'.")
         
 def get_top_activations(top_fn: callable,
-                        n_files: int, 
                         neuron_idx: int,
+                        n_files: int,
                         max_val: Optional[float] = None
                         ) -> tuple[list[str], list[torch.Tensor]]:
     top = top_fn(neuron_idx, n_files, max_val)

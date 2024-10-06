@@ -12,20 +12,9 @@ top_fn = None
 
 def load_activation_map(config_path, layer_name, split, init_at_start):
     global top_fn
-    global_activation_audio_map = None
-    global_batch_dir = None
     with open(config_path, 'r') as f:
         config = json.load(f)
-    if init_at_start:
-        global_activation_audio_map = init_map(layer_name, config, split)
-    else:
-        if config['model_type'] == 'sae':
-            raise NotImplementedError("SAE model not supported yet.")
-        elif config['model_type'] == 'whisper':
-            global_batch_dir = get_batch_folder(config, split, layer_name)
-        else:
-            raise ValueError(f"Invalid model type {config['model_type']}, must be 'sae' or 'whisper'.")
-    top_fn = make_top_fn(global_activation_audio_map, global_batch_dir)
+    top_fn = make_top_fn(config, layer_name, split, init_at_start, None)
     print("Activation map loaded successfully.")
 
 
