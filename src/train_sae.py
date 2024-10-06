@@ -340,8 +340,70 @@ def train(seed: int,
             meta["loss_l1"] = sum(losses_l1) / grad_acc_steps
             meta["time_backward"] = backward_time
 
-            # Logging, saving, and validation code (unchanged)
-            # ...
+            # log training losses
+            if state["step"] % log_tb_every == 0:
+                tb_logger.add_scalar("train/loss", loss, state["step"])
+                tb_logger.add_scalar("train/loss_recon",
+                                     meta["loss_recon"], state["step"])
+                tb_logger.add_scalar(
+                    "train/loss_l1", meta["loss_l1"], state["step"])
+                tb_logger.add_scalar(
+                    "train/lr", scheduler.get_last_lr()[0], state["step"])
+
+        # save out model periodically
+        if state["step"] % save_every == 0:
+            save_checkpoint(state, checkpoint_out_dir +
+                            "/step" + str(state["step"]) + ".pth")
+
+        # validate periodically
+        if state["step"] % val_every == 0:
+            print("Validating...")
+            val_loss_recon, val_loss_l1, subbed_transcripts, base_transcripts, base_filenames, \
+                encoded_mag_means, encoded_mag_stds = validate(
+                    model, recon_loss_fn, recon_alpha, val_folder, device, activation_dims, layer_name,
+                    whisper_model, not logged_base_transcripts
+                )
+            logged_base_transcripts = True
+            print(
+                f"{state['step']} validation, loss_recon={val_loss_recon:.3f}")
+            # log validation losses
+            tb_logger.add_scalar(
+                "val/loss_recon", val_loss_recon, state["step"])
+            tb_logger.add_scalar("val/loss_l1", val_loss_l1, state["step"])
+            # not logging individual means and stds as it's too verbose
+            """
+            for i, (mean, std) in enumerate(zip(encoded_means, encoded_stds)):
+                tb_logger.add_scalar(
+                    f"val/encoded/mean_{i}", mean, state["step"])
+                tb_logger.add_scalar(
+                    f"val/encoded/std_{i}", std, state["step"])
+            """
+            # display histogram of encoded values sorted high to low to let us see dead latents
+            tb_logger.add_histogram(
+                "val/encoded/magnitude_means", np.array(encoded_mag_means), state["step"])
+            tb_logger.add_histogram(
+                "val/encoded/magnitude_stds", np.array(encoded_mag_stds), state["step"])
+            for i, transcript in enumerate(subbed_transcripts):
+                tb_logger.add_text(
+                    f"val/transcripts/reconstructed_{i}", transcript, state["step"])
+            if base_transcripts != []:
+                for i, transcript in enumerate(base_transcripts):
+                    tb_logger.add_text(
+                        f"val/transcripts/base_{i}", transcript, state["step"])
+                for i, filename in enumerate(base_filenames):
+                    # log audio file, which is a flac at 16000 Hz
+                    audio = torchaudio.load(filename)[0]
+                    tb_logger.add_audio(
+                        f"val/transcripts/audio_{i}", audio, state["step"], sample_rate=16000)
+            if val_loss_recon.item() < state["best_val_loss"]:
+                print("Saving new best validation")
+                state["best_val_loss"] = val_loss_recon.item()
+                save_checkpoint(state, checkpoint_out_dir +
+                                "/bestval" + ".pth")
+
+                # Save PyTorch model for PR area calculation
+                pytorch_model_path = model_out[:-3] + ".bestval"
+                torch.save(model, pytorch_model_path)
 
             if steps != -1 and state["step"] >= steps:
                 pbar.close()
