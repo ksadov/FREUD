@@ -1,5 +1,5 @@
 {
-  "model": "runs/sae_test/checkpoints",
+  "model": "runs/sae_test_unsorted/checkpoints/bestval.pth",
   "model_type": "sae",
   "layers": [
     "encoder.blocks.2.mlp.1"

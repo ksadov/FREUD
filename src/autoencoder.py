@@ -31,8 +31,9 @@ class AutoEncoder(nn.Module):
         x_hat = self.decoder(c)
         return x_hat, c
     
-def init_sae(activation_size: int, n_dict_components: int, checkpoint: str):
-    model = AutoEncoder(activation_size, n_dict_components)
-    model.load_state_dict(torch.load(checkpoint))
+def init_from_checkpoint(checkpoint: str):
+    checkpoint = torch.load(checkpoint)
+    model = AutoEncoder(checkpoint['activation_size'], checkpoint['n_dict_components'])
+    model.load_state_dict(checkpoint['model'])
     model.eval()
     return model

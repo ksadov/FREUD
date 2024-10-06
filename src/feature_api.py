@@ -4,7 +4,7 @@ import torch
 import torchaudio
 from librispeech_data import LibriSpeechDataset
 from constants import SAMPLE_RATE, TIMESTEP_S
-from autoencoder import init_sae
+from autoencoder import init_from_checkpoint, AutoEncoder
 
 
 def get_batch_folder(config: dict, split: str, layer_name: str) -> str:
@@ -86,13 +86,15 @@ def search_activations(batch_folder, neuron_idx, n_files, max_val):
             top = top[:n_files]
     return top
 
-def make_top_fn(config: dict, layer_name: str, split: str, init_at_start: bool, checkpoint: Optional[str]) -> callable:
+def make_top_fn(config: dict, layer_name: str, split: str, init_at_start: bool) -> callable:
     if init_at_start:
         activation_audio_map = init_map(layer_name, config, split)
         return lambda neuron_idx, n_files, max_val: top_activating_files(
             activation_audio_map, n_files, neuron_idx, max_val)
     elif config['model_type'] == 'sae':
-        raise NotImplementedError("SAE model not supported yet.")
+        model = init_from_checkpoint(config['model'])
+        print("SAE Model loaded successfully.")
+        raise NotImplementedError("SAE model not implemented.")
     elif config['model_type'] == 'whisper':
         batch_dir = get_batch_folder(config, split, layer_name)
         return lambda neuron_idx, n_files, max_val: search_activations(

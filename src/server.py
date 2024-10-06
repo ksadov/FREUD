@@ -14,7 +14,7 @@ def load_activation_map(config_path, layer_name, split, init_at_start):
     global top_fn
     with open(config_path, 'r') as f:
         config = json.load(f)
-    top_fn = make_top_fn(config, layer_name, split, init_at_start, None)
+    top_fn = make_top_fn(config, layer_name, split, init_at_start)
     print("Activation map loaded successfully.")
 
 
