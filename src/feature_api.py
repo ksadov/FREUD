@@ -51,7 +51,6 @@ def top_activating_files(activation_audios: MemoryMappedActivationsDataset, n_fi
     top = []
     for audio_file, activation in activation_audios:
         activation_at_idx = activation.transpose(0, 1)[neuron_idx]
-        print("activation shape", activation_at_idx.shape)
         trimmed_activation = trim_activation(audio_file, activation_at_idx)
         max_activation_value = trimmed_activation.max().item()
         if max_val is None or max_activation_value < max_val:
