@@ -1,7 +1,9 @@
+from typing import Optional
 import pathlib
 import argparse
 import torch
 from hooked_model import WhisperActivationCache
+from autoencoder import AutoEncoder, init_from_checkpoint
 from librispeech_data import LibriSpeechDataset
 from torch.utils.data import DataLoader
 import whisper
@@ -76,6 +78,7 @@ def create_out_folder(folder_name):
 def get_activations(
     data_path: str,
     whisper_model: torch.nn.Module,
+    sae_model: Optional[AutoEncoder],
     layers_to_cache: list[str],
     split: str,
     batch_size: int,
@@ -98,7 +101,11 @@ def get_activations(
         with torch.no_grad():
             result = whisper_cache.forward(mels)
         activations = whisper_cache.activations
-        
+        if sae_model is not None:
+            for n, act in activations.items():
+                with torch.no_grad():
+                    _, c = sae_model(act)
+                    activations[n] = c
         for name, act in activations.items():
             out_folder = create_out_folder(f"{out_folder_prefix}/{split}/{name}")
             save_activations_for_memory_mapping(act, global_file_name, out_folder, name)
@@ -110,11 +117,13 @@ def main():
     with open(args.config, "r") as f:
         config = json.load(f)
     whisper_model = whisper.load_model(config["whisper_model"])
+    sae_model = init_from_checkpoint(config["sae_model"]) if config["model_type"] is not None else None
     for split in config["splits"]:
         print(f"Processing split {split}")
         get_activations(
             config["data_path"],
             whisper_model,
+            sae_model,
             config["layers"],
             split,
             config["batch_size"],

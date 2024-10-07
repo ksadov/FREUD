@@ -3,7 +3,7 @@
   "sae_model": "runs/sae_test_unsorted/checkpoints/bestval.pth",
   "model_type": "sae",
   "layers": [
-    "encoder.blocks.2"
+    "encoder.blocks.2$"
   ],
   "splits": [
     "test-other"
@@ -11,6 +11,6 @@
   "batch_size": 16,
   "data_path": "/Users/ksadov/Documents/ml_experiments/whisper_sae/librispeech_data",
   "device": "cpu",
-  "out_folder_prefix": "activations/sae_test",
+  "out_folder_prefix": "activations/mmap_sae_test",
   "save_transcriptions": false
 }
