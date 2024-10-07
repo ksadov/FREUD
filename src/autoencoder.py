@@ -1,6 +1,10 @@
 import torch
 from jaxtyping import Float
 from torch import Tensor, nn
+import torchaudio
+from librispeech_data import log_mel_spectrogram
+from constants import N_MELS, SAMPLE_RATE
+from hooked_model import WhisperActivationCache, activations_from_audio
 
 
 class AutoEncoder(nn.Module):
@@ -30,3 +34,17 @@ class AutoEncoder(nn.Module):
         # Decoding step as before
         x_hat = self.decoder(c)
         return x_hat, c
+    
+def init_from_checkpoint(checkpoint: str):
+    checkpoint = torch.load(checkpoint)
+    model = AutoEncoder(checkpoint['activation_size'], checkpoint['n_dict_components'])
+    model.load_state_dict(checkpoint['model'])
+    model.eval()
+    return model
+
+def get_audio_features(sae_model: AutoEncoder, whisper_cache: WhisperActivationCache, audio_fname: str):
+    activations, _ = activations_from_audio(whisper_cache, audio_fname)
+    activation_values = torch.cat(list(activations.values()), dim=1)
+    _, c = sae_model(activation_values)
+    return c
+    
