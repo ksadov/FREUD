@@ -8,6 +8,7 @@ from autoencoder import init_from_checkpoint, AutoEncoder, get_audio_features
 from hooked_model import init_cache, WhisperActivationCache
 from librispeech_data import get_librispeech_files
 from typing import Generator
+from mmapped_activations import MemoryMappedActivationsDataset
 
 
 def get_batch_folder(config: dict, split: str, layer_name: str) -> str:
@@ -29,10 +30,8 @@ def load_activations(batch_folder: str) -> dict:
 
 
 def init_map(layer_name: str, config: dict, split: str) -> torch.Tensor:
-    batch_folder = get_batch_folder(config, split, layer_name)
-    activation_map = load_activations(batch_folder)
-    activation_audio_map = activation_map
-    return activation_audio_map
+    data_dir = get_batch_folder(config, split, layer_name)
+    return MemoryMappedActivationsDataset(data_dir, layer_name)
 
 
 def trim_activation(audio_fname: str, activation: torch.Tensor) -> torch.Tensor:
@@ -41,23 +40,14 @@ def trim_activation(audio_fname: str, activation: torch.Tensor) -> torch.Tensor:
     return activation[:n_frames]
 
 
-def get_activation(neuron_idx: int, audio_fname: str, activation_audio_map: dict) -> list:
-    if audio_fname in activation_audio_map:
-        activation = activation_audio_map[audio_fname]
-        return activation.transpose(0, 1)[neuron_idx]
-    else:
-        raise ValueError(
-            f"Audio file {audio_fname} not found in activation_audio_map")
-
-
 def get_top_activating_files(activation_audio_map: dict, n_files: int, neuron_idx: int) -> list[str]:
     top_files = top_activating_files(activation_audio_map, n_files, neuron_idx)
     return [x[1] for x in top_files[:n_files]]
 
 
-def top_activating_files(activation_audio_map: dict, n_files: int, neuron_idx: int, max_val: Optional[float]) -> list:
+def top_activating_files(activation_audios: MemoryMappedActivationsDataset, n_files: int, neuron_idx: int, max_val: Optional[float]) -> list:
     top = []
-    for audio_file, activation in activation_audio_map.items():
+    for audio_file, activation in activation_audios:
         activation_at_idx = activation.transpose(0, 1)[neuron_idx]
         trimmed_activation = trim_activation(audio_file, activation_at_idx)
         max_activation_value = trimmed_activation.max().item()
@@ -66,8 +56,9 @@ def top_activating_files(activation_audio_map: dict, n_files: int, neuron_idx: i
             max_activation_time = max_activation_loc * TIMESTEP_S
             top.append((audio_file, trimmed_activation,
                         max_activation_value, max_activation_time))
-    top.sort(key=lambda x: x[2], reverse=True)
-    return top[:n_files]
+            top.sort(key=lambda x: x[2], reverse=True)
+            top = top[:n_files]
+    return top
 
 def search_activations(batch_folder, neuron_idx, n_files, max_val):
     # activation map may be too big to load all at once
@@ -99,7 +90,6 @@ def get_top_sae(sae_model: AutoEncoder, whisper_cache: WhisperActivationCache, a
             break
         audio_features = get_audio_features(sae_model, whisper_cache, audio_path)
         activation = audio_features[:, :, neuron_idx].squeeze()
-        print("ACTIVATION SHAPE", activation.shape)
         max_activation_value = activation.max().item()
         if max_val is None or max_activation_value < max_val:
             max_activation_loc = activation.argmax().item()

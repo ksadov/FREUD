@@ -186,11 +186,12 @@ class LibriSpeechDataset(torch.utils.data.Dataset):
         self.root = librispeech_folder
         self.device = device
         self.calculate_mel = calculate_mel
+        self.split = subset
 
     def __getitem__(self, idx) -> dict:
         file_name, sr, transcript, speaker_id, chapter_id, utterance_id = self.dataset.get_metadata(
             idx)
-        global_file_name = os.path.join(self.root, file_name)
+        global_file_name = os.path.join(self.root, 'LibriSpeech', file_name)
         if self.calculate_mel:
             mel = get_mels_from_audio_path(self.device, global_file_name)
         else:
