@@ -12,8 +12,7 @@ from datetime import datetime
 import os
 import numpy as np
 from torch.utils.data import Dataset
-
-
+from npy_append_array import NpyAppendArray
 
 class MemoryMappedActivationsDataset(Dataset):
     def __init__(self, data_dir, layer_name):
@@ -26,6 +25,7 @@ class MemoryMappedActivationsDataset(Dataset):
             self.metadata = json.load(f)
         
         self.mmap = np.load(self.tensor_file, mmap_mode='r')
+        print("MMAP SHAPE AT INIT", self.mmap.shape)
     
     def __len__(self):
         return len(self.metadata['filenames'])
@@ -35,35 +35,48 @@ class MemoryMappedActivationsDataset(Dataset):
         tensor_shape = self.metadata['tensor_shapes'][idx]
         tensor_offset = self.metadata['tensor_offsets'][idx]
         tensor_size = np.prod(tensor_shape)
-        
-        tensor_data = self.mmap[tensor_offset:tensor_offset+tensor_size].reshape(tensor_shape)
+        print("tensor offset", tensor_offset)
+        print("tensor size", tensor_size)
+        print("mmap shape", self.mmap.shape)
+        print("mmap at idx", self.mmap[idx].shape)
+        sliced = self.mmap[idx]
+        print("sliced shape", sliced.shape)
+        tensor_data = sliced.reshape(tensor_shape)
         tensor = torch.from_numpy(tensor_data)
         
         return filename, tensor
 
 def save_activations_for_memory_mapping(activations, filenames, out_dir, layer_name):
     os.makedirs(out_dir, exist_ok=True)
-    metadata = {
-        'filenames': filenames,
-        'tensor_shapes': [],
-        'tensor_offsets': [0]
-    }
+    metadata_file = os.path.join(out_dir, f"{layer_name}_metadata.json")
+    tensor_file = os.path.join(out_dir, f"{layer_name}_tensors.npy")
     
-    all_tensors = []
-    for tensor in activations:
+    # Load existing metadata if it exists
+    if os.path.exists(metadata_file):
+        with open(metadata_file, 'r') as f:
+            metadata = json.load(f)
+        last_offset = metadata['tensor_offsets'][-1]
+    else:
+        metadata = {'filenames': [], 'tensor_shapes': [], 'tensor_offsets': [0]}
+        last_offset = 0
+    
+    # Prepare new data and update metadata
+    new_tensors = []
+    for filename, tensor in zip(filenames, activations):
+        metadata['filenames'].append(filename)
         metadata['tensor_shapes'].append(list(tensor.shape))
-        all_tensors.append(tensor.numpy())
-        metadata['tensor_offsets'].append(metadata['tensor_offsets'][-1] + tensor.numel())
+        new_tensors.append(tensor.cpu().numpy())
+        last_offset += tensor.numel()
+        metadata['tensor_offsets'].append(last_offset)
     
-    # Remove the last offset as it's not needed
-    metadata['tensor_offsets'].pop()
-    
-    # Save metadata
-    with open(os.path.join(out_dir, f"{layer_name}_metadata.json"), 'w') as f:
+    # Save updated metadata
+    with open(metadata_file, 'w') as f:
         json.dump(metadata, f)
     
-    # Save tensors
-    np.save(os.path.join(out_dir, f"{layer_name}_tensors.npy"), np.concatenate([t.flatten() for t in all_tensors]))
+    # Append tensor data to the file using NpyAppendArray
+    with NpyAppendArray(tensor_file) as npaa:
+        for tensor in new_tensors:
+            npaa.append(tensor.reshape(1, -1))  # Reshape to 2D array for appending
 
 def create_out_folder(folder_name):
     pathlib.Path(folder_name).mkdir(parents=True, exist_ok=True)
@@ -85,8 +98,8 @@ def get_activations(
     )
     whisper_cache.model.eval()
     dataset = LibriSpeechDataset(data_path, split, device)
-    # take first 500 samples
-    dataset = torch.utils.data.Subset(dataset, range(500))
+    # take 250-member subset for testing
+    dataset = torch.utils.data.Subset(dataset, range(250))
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
     for batch in tqdm(dataloader):
         whisper_cache.reset_state()

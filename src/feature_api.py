@@ -31,7 +31,9 @@ def load_activations(batch_folder: str) -> dict:
 
 def init_map(layer_name: str, config: dict, split: str) -> torch.Tensor:
     data_dir = get_batch_folder(config, split, layer_name)
-    return MemoryMappedActivationsDataset(data_dir, layer_name)
+    dset = MemoryMappedActivationsDataset(data_dir, layer_name)
+    print("dset len", len(dset))
+    return dset
 
 
 def trim_activation(audio_fname: str, activation: torch.Tensor) -> torch.Tensor:
@@ -49,6 +51,7 @@ def top_activating_files(activation_audios: MemoryMappedActivationsDataset, n_fi
     top = []
     for audio_file, activation in activation_audios:
         activation_at_idx = activation.transpose(0, 1)[neuron_idx]
+        print("activation shape", activation_at_idx.shape)
         trimmed_activation = trim_activation(audio_file, activation_at_idx)
         max_activation_value = trimmed_activation.max().item()
         if max_val is None or max_activation_value < max_val:

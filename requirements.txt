@@ -5,6 +5,7 @@ natsort
 matplotlib
 regex
 openai-whisper
+npy-append-array
 # for the interactive GUI
 Flask
 Flask-CORS
