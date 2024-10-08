@@ -101,8 +101,8 @@ def get_top_sae(sae_model: AutoEncoder, whisper_cache: WhisperActivationCache, a
             pq = pq[:n_files]
     return pq
 
-def make_top_fn(config: dict, layer_name: str, split: str, init_at_start: bool) -> callable:
-    if init_at_start:
+def make_top_fn(config: dict, layer_name: str, split: str, from_disk: bool) -> callable:
+    if from_disk:
         activation_audio_map = init_map(layer_name, config, split)
         return lambda neuron_idx, n_files, max_val: top_activating_files(
             activation_audio_map, n_files, neuron_idx, max_val)

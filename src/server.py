@@ -10,11 +10,11 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 # Global variable to store the activation_audio_map
 top_fn = None
 
-def load_activation_map(config_path, layer_name, split, init_at_start):
+def load_activation_map(config_path, layer_name, split, from_disk):
     global top_fn
     with open(config_path, 'r') as f:
         config = json.load(f)
-    top_fn = make_top_fn(config, layer_name, split, init_at_start)
+    top_fn = make_top_fn(config, layer_name, split, from_disk)
     print("Activation map loaded successfully.")
 
 
@@ -49,7 +49,7 @@ if __name__ == '__main__':
     parser.add_argument('--config', type=str, required=True)
     parser.add_argument('--layer_name', type=str, required=True)
     parser.add_argument('--split', type=str, required=True)
-    parser.add_argument('--init_at_start', action='store_true')
+    parser.add_argument('--from_disk', action='store_true')
     args = parser.parse_args()
-    load_activation_map(args.config, args.layer_name, args.split, args.init_at_start)
+    load_activation_map(args.config, args.layer_name, args.split, args.from_disk)
     app.run(debug=True, host='0.0.0.0', port=5555)
