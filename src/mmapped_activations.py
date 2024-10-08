@@ -27,7 +27,11 @@ class MemoryMappedActivationsDataset(Dataset):
             self.metadata = json.load(f)
         
         self.mmap = np.load(self.tensor_file, mmap_mode='r')
-    
+        self.activation_shape = self._get_activation_shape()
+
+    def _get_activation_shape(self):
+        return self.metadata['tensor_shapes'][0]
+
     def __len__(self):
         return len(self.metadata['filenames'])
     
@@ -117,7 +121,7 @@ def main():
     with open(args.config, "r") as f:
         config = json.load(f)
     whisper_model = whisper.load_model(config["whisper_model"])
-    sae_model = init_from_checkpoint(config["sae_model"]) if config["model_type"] is not None else None
+    sae_model = init_from_checkpoint(config["sae_model"]) if config["sae_model"] is not None else None
     for split in config["splits"]:
         print(f"Processing split {split}")
         get_activations(

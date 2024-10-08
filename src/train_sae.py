@@ -2,7 +2,7 @@ import torch
 import whisper
 from torch.amp import autocast
 from tqdm import tqdm
-from activation_dataset import ActivationDataset
+from mmapped_activations import MemoryMappedActivationsDataset
 from librispeech_data import get_mels_from_audio_path
 from hooked_model import WhisperSubbedActivation
 import numpy as np
@@ -48,7 +48,7 @@ def validate(
     base_transcripts = []
     base_filenames = []
 
-    val_dataset = ActivationDataset(val_folder, "val")
+    val_dataset = MemoryMappedActivationsDataset(val_folder, layer_name)
     val_loader = torch.utils.data.DataLoader(
         val_dataset, batch_size=1, shuffle=False
     )
@@ -57,9 +57,9 @@ def validate(
     context_manager = autocast(device_type=str(
         device)) if device == torch.device("cuda") else nullcontext()
 
-    for i, activations in tqdm(enumerate(val_loader), total=len(val_loader)):
+    for i, datapoints in tqdm(enumerate(val_loader), total=len(val_loader)):
         with torch.no_grad(), context_manager:
-            activations, filenames = activations
+            filenames, activations = datapoints
             activations = activations.to(device)
             filenames = filenames[0]
             pred, c = model(activations)
@@ -195,7 +195,7 @@ def train(seed: int,
           whisper_model: str
           ):
     set_seeds(seed)
-    train_dataset = ActivationDataset(train_folder, "train")
+    train_dataset = MemoryMappedActivationsDataset(train_folder, layer_name)
     # train_dataset = TokenEmbeddingDataset()
     feat_dim = train_dataset.activation_shape[-1]
     activation_dims = len(train_dataset.activation_shape)
@@ -289,7 +289,7 @@ def train(seed: int,
         for _ in range(total_steps_per_epoch):
             for _ in range(grad_acc_steps):
                 try:
-                    activations, filenames = next(train_loader)
+                    filenames, activations = next(train_loader)
                     activations = activations.to(device)
                 except StopIteration:
                     train_loader = iter(
