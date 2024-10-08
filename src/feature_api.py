@@ -26,9 +26,9 @@ def load_activations(batch_folder: str) -> dict:
     return activation_map
 
 
-def init_map(layer_name: str, config: dict, split: str) -> torch.Tensor:
+def init_map(layer_name: str, config: dict, split: str, files_to_search: int) -> torch.Tensor:
     data_dir = get_batch_folder(config, split, layer_name)
-    dset = MemoryMappedActivationsDataset(data_dir, layer_name)
+    dset = MemoryMappedActivationsDataset(data_dir, layer_name, files_to_search)
     print("dset len", len(dset))
     return dset
 
@@ -94,13 +94,12 @@ def get_top_fly(dataloader: FlyActivationDataloader, neuron_idx: int, n_files: i
                 pq = pq[:n_files]
     return pq
 
-def make_top_fn(config: dict, layer_name: str, split: str, from_disk: bool) -> callable:
+def make_top_fn(config: dict, layer_name: str, split: str, from_disk: bool, files_to_search: Optional[int]) -> callable:
     if from_disk:
-        activation_audio_map = init_map(layer_name, config, split)
+        activation_audio_map = init_map(layer_name, config, split, files_to_search)
         return lambda neuron_idx, n_files, max_val: top_activating_files(
             activation_audio_map, n_files, neuron_idx, max_val)
     else:
-        SUBSET_SIZE = 100
         fly_dataloader = FlyActivationDataloader(
             config['data_path'],
             config['whisper_model'],
@@ -110,7 +109,7 @@ def make_top_fn(config: dict, layer_name: str, split: str, from_disk: bool) -> c
             split,
             batch_size=1,
             dl_max_workers=4,
-            subset_size=SUBSET_SIZE
+            subset_size=files_to_search
         )
         return lambda neuron_idx, n_files, max_val: get_top_fly(
             fly_dataloader, neuron_idx, n_files, max_val)
