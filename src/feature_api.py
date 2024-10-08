@@ -83,15 +83,17 @@ def get_top_fly(dataloader: FlyActivationDataloader, neuron_idx: int, n_files: i
     print("Searching activations...")
     pq = []
     for act_batch, audio_files in tqdm(dataloader):
-        for i, audio_path in enumerate(audio_files):
-            activation = act_batch[i, :, neuron_idx]
-            max_activation_value = activation.max().item()
+        for act, audio_file in zip(act_batch, audio_files):
+            act = act.squeeze()[:, neuron_idx]
+            trimmed_activation = trim_activation(audio_file, act)
+            max_activation_value = trimmed_activation.max().item()
             if max_val is None or max_activation_value < max_val:
-                max_activation_loc = activation.argmax().item()
+                max_activation_loc = trimmed_activation.argmax().item()
                 max_activation_time = max_activation_loc * TIMESTEP_S
-                pq.append((audio_path, activation, max_activation_value, max_activation_time))
+                pq.append((audio_file, trimmed_activation, max_activation_value, max_activation_time))
                 pq.sort(key=lambda x: x[2], reverse=True)
                 pq = pq[:n_files]
+    print("Search complete.")
     return pq
 
 def make_top_fn(config: dict, layer_name: str, split: str, from_disk: bool, files_to_search: Optional[int]) -> callable:
@@ -107,7 +109,7 @@ def make_top_fn(config: dict, layer_name: str, split: str, from_disk: bool, file
             layer_name,
             config['device'],
             split,
-            batch_size=1,
+            batch_size=50,
             dl_max_workers=4,
             subset_size=files_to_search
         )
@@ -122,4 +124,5 @@ def get_top_activations(top_fn: callable,
     top = top_fn(neuron_idx, n_files, max_val)
     top_files = [x[0] for x in top]
     activations = [x[1] for x in top]
+    print("Got top activations.")
     return top_files, activations
