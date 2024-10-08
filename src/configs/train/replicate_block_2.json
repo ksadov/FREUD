@@ -6,7 +6,7 @@
   "val_folder": "activations/tiny_block_2/dev-other/encoder.blocks.2",
   "device": "cuda",
   "n_dict_components": 200,
-  "run_dir": "runs/replicate_block_2_log_histogram",
+  "run_dir": "runs/replicate_block_2_fly",
   "lr": 4e-4,
   "weight_decay": 0.0,
   "steps": 100000,

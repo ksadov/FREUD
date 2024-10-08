@@ -3,6 +3,7 @@ import whisper
 from torch.amp import autocast
 from tqdm import tqdm
 from mmapped_activations import MemoryMappedActivationsDataset
+from activation_dataset import FlyActivationDataloader
 from librispeech_data import get_mels_from_audio_path
 from hooked_model import WhisperSubbedActivation
 import numpy as np
@@ -197,8 +198,8 @@ def train(seed: int,
     set_seeds(seed)
     train_dataset = MemoryMappedActivationsDataset(train_folder, layer_name)
     # train_dataset = TokenEmbeddingDataset()
-    feat_dim = train_dataset.activation_shape[-1]
-    activation_dims = len(train_dataset.activation_shape)
+    feat_dim = train_loader.activation_shape[-1]
+    activation_dims = len(train_loader.activation_shape)
     model = AutoEncoder(feat_dim, n_dict_components).to(device)
     dist_model = model
 
@@ -233,18 +234,6 @@ def train(seed: int,
     )
     scheduler = CosineAnnealingLR(optimizer, T_max=steps, eta_min=0)
 
-    dataloader_kwargs = {
-        "batch_size": batch_size,
-        "pin_memory": False,
-        "drop_last": True,
-        "num_workers": dl_max_workers,
-    }
-
-    train_loader = iter(
-        torch.utils.data.DataLoader(
-            train_dataset, shuffle=True, **dataloader_kwargs)
-    )
-
     # Object that contains the main state of the train loop
     state = {
         "model": model,
@@ -269,9 +258,10 @@ def train(seed: int,
 
     recon_loss_fn = partial(mse_loss, ignored_index=-1, reduction="mean")
     total_steps_per_epoch = len(
-        train_dataset) // (dataloader_kwargs['batch_size'] * grad_acc_steps)
+        train_loader.ls_dataset) // (dataloader_kwargs['batch_size'] * grad_acc_steps)
 
     epoch = 0
+    train_loader = iter(train_loader)
     while True:
         epoch += 1
         print(f"Epoch {epoch}")
@@ -280,22 +270,25 @@ def train(seed: int,
         pbar = tqdm(total=total_steps_per_epoch,
                     desc=f"Epoch {epoch}", unit="step")
 
-        forward_time = 0
-        backward_time = 0
-        losses_recon = []
-        losses_l1 = []
-        step_start_time = time.time()
-
         for _ in range(total_steps_per_epoch):
+            forward_time = 0
+            backward_time = 0
+            losses_recon = []
+            losses_l1 = []
+            step_start_time = time.time()
             for _ in range(grad_acc_steps):
                 try:
                     filenames, activations = next(train_loader)
                     activations = activations.to(device)
                 except StopIteration:
-                    train_loader = iter(
-                        torch.utils.data.DataLoader(
-                            train_dataset, shuffle=True, **dataloader_kwargs)
-                    )
+                    train_loader = iter(FlyActivationDataloader(
+                        whisper_model=whisper.load_model(whisper_model),
+                        data_path="/home/ksadov/whisper_sae_dataset",
+                        layer_to_cache=layer_name,
+                        device=device,
+                        split="train-other-500",
+                        dl_kwargs=dataloader_kwargs
+                    ))
                     activations, filenames = next(train_loader)
                     activations = activations.to(device)
 
@@ -407,13 +400,9 @@ def train(seed: int,
                 break
 
         pbar.close()
-        
-        if steps != -1 and state["step"] >= steps:
-            pbar.close()
-            break
 
-    save_checkpoint(state, checkpoint_out_dir +
-                    "/step" + str(state["step"]) + ".pth")
+        save_checkpoint(state, checkpoint_out_dir +
+                        "/step" + str(state["step"]) + ".pth")
 
 
 if __name__ == "__main__":
