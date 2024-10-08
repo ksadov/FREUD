@@ -6,9 +6,6 @@ from jaxtyping import Float
 from torch import Tensor
 import whisper
 from natsort import natsorted
-import regex
-import torchaudio
-from constants import SAMPLE_RATE
 from librispeech_data import get_mels_from_audio_path
 
 class BaseActivationModule(ABC):
@@ -16,7 +13,7 @@ class BaseActivationModule(ABC):
         self,
         model: torch.nn.Module,
         hook_fn: Optional[Callable] = None,
-        activation_regex: list[str] = ["*.blocks.*.mlp.*"],
+        activations_to_cache: list[str] = [],
     ):
         """
         Base class using pytorch hooks to cache all intermediate
@@ -29,11 +26,7 @@ class BaseActivationModule(ABC):
         self.step = 0
         self.activations = {}
         self.hooks = []
-        self.activations_to_cache = []
-        for name, _ in model.named_modules():
-            # check for regex match
-            if any(regex.match(activation, name) for activation in activation_regex):
-                self.activations_to_cache.append(name)
+        self.activations_to_cache = activations_to_cache
 
         # Natural sort to impose a consistent order
         self.activations_to_cache = natsorted(self.activations_to_cache)
@@ -94,10 +87,10 @@ class WhisperActivationCache(BaseActivationModule):
         self,
         hook_fn: Optional[Callable] = None,
         model: Optional[torch.nn.Module] = None,
-        activation_regex: list[str] = ["*.blocks.*.mlp.*"],
+        activations_to_cache: list[str] = [],
         device: torch.device = torch.device("cuda"),
     ):
-        super().__init__(model, hook_fn, activation_regex)
+        super().__init__(model, hook_fn, activations_to_cache)
         self.device = device
 
     def custom_forward(
@@ -169,11 +162,10 @@ class WhisperSubbedActivation(torch.nn.Module):
 
         return hook
     
-def init_cache(whisper_model: str, activation_str: str, device: torch.device) -> WhisperActivationCache:
+def init_cache(whisper_model: str, activations_to_cache: list[str], device: torch.device) -> WhisperActivationCache:
     whisper_model = whisper.load_model(whisper_model)
     whisper_model.eval()
-    activation_regex = [activation_str + "$"]
-    return WhisperActivationCache(model=whisper_model, activation_regex=activation_regex, device=device)
+    return WhisperActivationCache(model=whisper_model, activations_to_cache=activations_to_cache, device=device)
 
 def activations_from_audio(model: WhisperActivationCache, audio_fname: str) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
     with torch.no_grad():

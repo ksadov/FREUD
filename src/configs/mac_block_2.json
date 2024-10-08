@@ -3,7 +3,7 @@
   "sae_model": null,
   "model_type": "whisper",
   "layers": [
-    "encoder.blocks.2$"
+    "encoder.blocks.2"
   ],
   "splits": [
     "test-other"
