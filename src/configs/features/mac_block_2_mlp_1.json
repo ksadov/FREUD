@@ -1,7 +1,6 @@
 {
   "whisper_model": "tiny",
   "sae_model": null,
-  "model_type": "whisper",
   "layer_to_cache": "encoder.blocks.2.mlp.1",
   "batch_size": 1,
   "data_path": "audio_data/librispeech/Librispeech/test-other",
