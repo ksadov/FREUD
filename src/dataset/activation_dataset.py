@@ -1,9 +1,9 @@
 import torch
-from audio_dataset import AudioDataset
-from hooked_model import init_cache
 from torch.utils.data import DataLoader
 from typing import Optional
-from autoencoder import init_from_checkpoint
+from src.dataset.audio_dataset import AudioDataset
+from src.models.hooked_model import init_cache
+from src.models.autoencoder import init_from_checkpoint
 
 class FlyActivationDataloader(torch.utils.data.DataLoader):
     def __init__(self,  data_path: str, whisper_model: torch.nn.Module, sae_checkpoint: Optional[str], 

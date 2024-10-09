@@ -2,7 +2,7 @@
 import os
 import torch
 
-from audio_utils import get_mels_from_audio_path, is_audio_file
+from src.utils.audio_utils import get_mels_from_audio_path, is_audio_file
 
 class AudioDataset(torch.utils.data.Dataset):
     """

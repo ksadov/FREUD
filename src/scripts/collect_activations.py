@@ -5,7 +5,7 @@ import pathlib
 import torch
 from tqdm import tqdm
 from typing import Optional
-from activation_dataset import FlyActivationDataloader
+from src.dataset.activation_dataset import FlyActivationDataloader
 from npy_append_array import NpyAppendArray
 
 def save_activations_for_memory_mapping(activations, filenames, out_dir, layer_name):

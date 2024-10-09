@@ -1,7 +1,7 @@
 import torch
 from jaxtyping import Float
 from torch import Tensor, nn
-from hooked_model import WhisperActivationCache, activations_from_audio
+from src.models.hooked_model import WhisperActivationCache, activations_from_audio
 
 
 class AutoEncoder(nn.Module):

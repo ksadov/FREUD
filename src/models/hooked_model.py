@@ -5,7 +5,7 @@ import torch
 from jaxtyping import Float
 from torch import Tensor
 import whisper
-from audio_utils import get_mels_from_audio_path
+from src.utils.audio_utils import get_mels_from_audio_path
 
 class BaseActivationModule(ABC):
     def __init__(

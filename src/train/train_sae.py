@@ -4,14 +4,14 @@ import torch
 import whisper
 from torch.amp import autocast
 from tqdm import tqdm
-from mmapped_activations import MemoryMappedActivationsDataset
-from activation_dataset import FlyActivationDataloader
+from src.dataset.mmapped_activations import MemoryMappedActivationsDataset
+from src.dataset.activation_dataset import FlyActivationDataloader
 from librispeech_data import get_mels_from_audio_path
-from hooked_model import WhisperSubbedActivation
+from src.models.hooked_model import WhisperSubbedActivation
 import numpy as np
 import random
 import os
-from autoencoder import AutoEncoder
+from src.models.autoencoder import AutoEncoder
 from pathlib import Path
 from torch.optim import RAdam
 from torch.optim.lr_scheduler import CosineAnnealingLR
