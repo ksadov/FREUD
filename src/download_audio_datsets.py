@@ -11,8 +11,6 @@ roots = {
 files = {
     "librispeech": [
       "test-other.tar.gz",
-      "dev-other.tar.gz",
-      "train-other-500.tar.gz",
   ],
     "audioset": [
       "balanced_train_segments.csv",
@@ -44,7 +42,7 @@ def extract_files(file_dir: str):
     Extract and delete tar files in the directory
     """
     for file in tqdm(os.listdir(file_dir)):
-        if file.endswith(".tar"):
+        if ".tar" in file:
             file_path = os.path.join(file_dir, file)
             with tarfile.open(file_path) as tar:
                 tar.extractall(file_dir)
