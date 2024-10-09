@@ -1,6 +1,7 @@
 import torch
 from jaxtyping import Float
 from torch import Tensor, nn
+
 from src.models.hooked_model import WhisperActivationCache, activations_from_audio
 
 
@@ -9,9 +10,10 @@ class AutoEncoder(nn.Module):
         """
         Autoencoder model for audio features
 
-        requires: hp must contain the following
-            - activation_size: int
-            - n_dict_components: int
+        :param hp: dictionary containing hyperparameters
+        :requires: hp must contain the following keys:
+            - activation_size: size of the activation layer
+            - n_dict_components: number of dictionary components
         """
         super(AutoEncoder, self).__init__()
         self.hp = hp

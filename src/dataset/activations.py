@@ -9,6 +9,7 @@ from src.dataset.audio import AudioDataset
 from src.models.hooked_model import init_cache
 from src.models.autoencoder import init_from_checkpoint
 
+
 class FlyActivationDataloader(torch.utils.data.DataLoader):
     """
     Dataloader for computing Whisper or SAE activations on the fly

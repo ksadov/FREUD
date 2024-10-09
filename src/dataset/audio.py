@@ -4,6 +4,7 @@ import torch
 
 from src.utils.audio_utils import get_mels_from_audio_path, is_audio_file
 
+
 class AudioDataset(torch.utils.data.Dataset):
     """
     Dataset for audio files. Returns a tuple of mel spectrogram and audio filename, where mel spectrogram is None if 
