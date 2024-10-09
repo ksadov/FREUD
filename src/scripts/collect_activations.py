@@ -2,17 +2,26 @@ import argparse
 import json
 import os
 import pathlib
+from pathlib import Path
 import torch
 from tqdm import tqdm
 from typing import Optional
-from src.dataset.activation_dataset import FlyActivationDataloader
 from npy_append_array import NpyAppendArray
 
-def save_activations_for_memory_mapping(activations, filenames, out_dir, layer_name):
-    os.makedirs(out_dir, exist_ok=True)
-    metadata_file = os.path.join(out_dir, f"{layer_name}_metadata.json")
-    tensor_file = os.path.join(out_dir, f"{layer_name}_tensors.npy")
-    
+from src.dataset.activation_dataset import FlyActivationDataloader
+
+def save_activations_for_memory_mapping(metadata_file: Path, tensor_file: Path, activations: torch.tensor, 
+                                        filenames: list[str]):
+    """
+    Append activations to a memory-mappable file and update metadata
+
+    :param metadata_file: Path to the metadata file
+    :param tensor_file: Path to the tensor file
+    :param activations: List of activations to save
+    :param filenames: List of filenames corresponding to the activations
+    :requires: len(activations) == len(filenames)
+    """
+    assert len(activations) == len(filenames), "Number of activations and filenames must match"
     # Load existing metadata if it exists
     if os.path.exists(metadata_file):
         with open(metadata_file, 'r') as f:
@@ -36,37 +45,57 @@ def save_activations_for_memory_mapping(activations, filenames, out_dir, layer_n
         for tensor in new_tensors:
             npaa.append(tensor.reshape(1, -1))  # Reshape to 2D array for appending
 
-def create_out_folder(folder_name):
-    pathlib.Path(folder_name).mkdir(parents=True, exist_ok=True)
-    return folder_name
-
 def get_activations(
     data_path: str,
     layer_to_cache: str,
     whisper_model: str,
+    sae_model: Optional[str],
     batch_size: int,
     device: torch.device,
     out_folder: str,
     collect_max: Optional[int]
 ):
+    """
+    If sae_model is specified, collect activations from sae_model, otherwise collect activations from whisper_model
+
+    :param data_path: Path to the data folder
+    :param layer_to_cache: Layer to cache activations for
+    :param whisper_model: String corresponding to the whisper model name, i.e "tiny"
+    :param sae_model: Path to SAE checkpoint
+    :param batch_size: Batch size for the dataloader
+    :param device: Device to run the model on
+    """
     dataloader = FlyActivationDataloader(
         data_path,
         whisper_model,
-        None,
+        sae_model,
         layer_to_cache,
         device,
         batch_size,
         4,
         collect_max
     )
+
+    metadata_file = os.path.join(out_folder, f"{layer_to_cache}_metadata.json")
+    tensor_file = os.path.join(out_folder, f"{layer_to_cache}_tensors.npy")
+    # delete existing metadata and tensor files
+    if os.path.exists(metadata_file):
+        os.remove(metadata_file)
+    if os.path.exists(tensor_file):
+        os.remove(tensor_file)
+    # create directory for the output
+    os.makedirs(out_folder, exist_ok=True)
+
     for batch in tqdm(dataloader):
         activations, global_filenames = batch
-        save_activations_for_memory_mapping(activations, global_filenames, out_folder, layer_to_cache)
+        save_activations_for_memory_mapping(metadata_file, tensor_file, activations, global_filenames)
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str)
     args = parser.parse_args()
+    # create output folder
+    os.makedirs(config["out_folder"], exist_ok=True)
     with open(args.config, "r") as f:
         config = json.load(f)
         get_activations(
@@ -75,7 +104,7 @@ def main():
             config["whisper_model"],
             config["batch_size"],
             torch.device(config["device"]),
-            create_out_folder(config["out_folder"]),
+            config["out_folder"],
             config["collect_max"]
         )
 

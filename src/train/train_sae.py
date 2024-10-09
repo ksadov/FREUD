@@ -247,6 +247,7 @@ def train(seed: int,
         "n_dict_components": n_dict_components,
         "layer_name": layer_name,
         "whisper_model": whisper_model,
+        "activation_size": feat_dim,
     }
     tb_logger.add_text("hparams", json.dumps(hparam_dict, indent=4))
     model_out = run_dir + "/model"
@@ -266,11 +267,7 @@ def train(seed: int,
         "scheduler": scheduler,
         "step": 0,
         "best_val_loss": float("inf"),
-        "total_speech_seconds_seen": 0,
-        "total_non_speech_seconds_seen": 0,
-        "total_time_ms": 0,
-        "activation_size": feat_dim,
-        "n_dict_components": n_dict_components
+        "hparams": hparam_dict,
     }
     meta = {}
     meta["effective_batch_size"] = batch_size

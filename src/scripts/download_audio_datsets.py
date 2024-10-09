@@ -11,18 +11,42 @@ roots = {
 files = {
     "librispeech": [
       "test-other.tar.gz",
+      "dev-other.tar.gz",
+      "train-other-500.tar.gz",
   ],
     "audioset": [
-      "balanced_train_segments.csv",
-      "bal_train00.tar",
-      "bal_train01.tar",
-      "eval_segments.csv",
-      "eval00.tar",
-      "ontology.json",
-  ]
+        "balanced_train_segments.csv",
+        "bal_train00.tar",
+        "bal_train01.tar",
+        "bal_train02.tar",
+        "bal_train03.tar",
+        "bal_train04.tar",
+        "bal_train05.tar",
+        "bal_train06.tar",
+        "bal_train07.tar",
+        "bal_train08.tar",
+        "bal_train09.tar",
+        "eval_segments.csv",
+        "eval00.tar",
+        "eval01.tar",
+        "eval02.tar",
+        "eval03.tar",
+        "eval04.tar",
+        "eval05.tar",
+        "eval06.tar",
+        "eval07.tar",
+        "eval08.tar",
+        "ontology.json",
+    ]
 }
 
 def download_files(output_dir: str, dataset: str):
+    """
+    Download files corresponding to one of the available datasets (librispeech, audioset)
+
+    :param output_dir: The directory to save the downloaded files (saved within a subdirectory named after the dataset)
+    :param dataset: The dataset to download
+    """
     os.makedirs(output_dir, exist_ok=True)
     filtered_files = [file for file in files[dataset] if not os.path.exists(os.path.join(output_dir, file))]
     for file in tqdm(filtered_files):
@@ -39,7 +63,9 @@ def download_files(output_dir: str, dataset: str):
 
 def extract_files(file_dir: str):
     """
-    Extract and delete tar files in the directory
+    Extract all tar files in the given directory and remove the tar files after extraction
+
+    :param file_dir: The directory containing the tar files to extract
     """
     for file in tqdm(os.listdir(file_dir)):
         if ".tar" in file:

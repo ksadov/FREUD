@@ -23,6 +23,8 @@ class FlyActivationDataloader(torch.utils.data.DataLoader):
         }
         self.dataloader = DataLoader(self.dataset, **dl_kwargs)
         self.activation_shape = self._get_activation_shape()
+        assert self.sae_model is None or layer_to_cache == self.sae_model.layer_name, \
+            "layer_to_cache must match the layer that the SAE model was trained on"
 
     def _get_activation_shape(self):
         mels, _ = self.dataset[0]

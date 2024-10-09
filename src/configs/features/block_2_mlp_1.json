@@ -5,7 +5,7 @@
   "layer_to_cache": "encoder.blocks.2.mlp.1",
   "batch_size": 1,
   "data_path": "audio_data/librispeech/Librispeech/test-other",
-  "device": "cpu",
-  "out_folder": "activations/mmap_ls_block_2",
-  "collect_max": 50
+  "device": "cuda",
+  "out_folder": "activations/ls_b2_mlp_1",
+  "collect_max": null
 }

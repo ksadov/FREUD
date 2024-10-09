@@ -5,11 +5,12 @@ from src.models.hooked_model import WhisperActivationCache, activations_from_aud
 
 
 class AutoEncoder(nn.Module):
-    def __init__(self, activation_size, n_dict_components):
+    def __init__(self, activation_size, n_dict_components, layer_name):
         super(AutoEncoder, self).__init__()
         self.tied = True  # tie encoder and decoder weights
         self.activation_size = activation_size
         self.n_dict_components = n_dict_components
+        self.layer_name = layer_name
 
         # Only defining the decoder layer, encoder will share its weights
         self.decoder = nn.Linear(n_dict_components, activation_size, bias=False)
@@ -34,7 +35,8 @@ class AutoEncoder(nn.Module):
     
 def init_from_checkpoint(checkpoint: str):
     checkpoint = torch.load(checkpoint)
-    model = AutoEncoder(checkpoint['activation_size'], checkpoint['n_dict_components'])
+    hp = checkpoint['hparams']
+    model = AutoEncoder(hp['activation_size'], hp['n_dict_components'], hp['layer_name'])
     model.load_state_dict(checkpoint['model'])
     model.eval()
     return model
