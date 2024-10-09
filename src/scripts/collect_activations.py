@@ -94,18 +94,18 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=str)
     args = parser.parse_args()
-    # create output folder
-    os.makedirs(config["out_folder"], exist_ok=True)
     with open(args.config, "r") as f:
         config = json.load(f)
+        os.makedirs(config["out_folder"], exist_ok=True)
         get_activations(
             config["data_path"],
             config["layer_to_cache"],
             config["whisper_model"],
+            config["sae_model"],
             config["batch_size"],
             torch.device(config["device"]),
             config["out_folder"],
-            config["collect_max"]
+            config.get("collect_max", None)
         )
 
 if __name__ == "__main__":
