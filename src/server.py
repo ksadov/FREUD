@@ -3,7 +3,7 @@ import argparse
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 import json
-from feature_api import init_map, get_top_activations, get_batch_folder, make_top_fn
+from feature_api import get_top_activations, make_top_fn
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})

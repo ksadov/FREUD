@@ -8,11 +8,6 @@ from activation_dataset import FlyActivationDataloader
 from tqdm import tqdm
 
 
-def get_batch_folder(config: dict, split: str, layer_name: str) -> str:
-    batch_folder = f"{config['out_folder_prefix']}/{split}/{layer_name}"
-    return batch_folder
-
-
 def load_activations(batch_folder: str) -> dict:
     activation_map = {}
     for batch_file in os.listdir(batch_folder)[:50]:
@@ -27,7 +22,7 @@ def load_activations(batch_folder: str) -> dict:
 
 
 def init_map(layer_name: str, config: dict, split: str, files_to_search: int) -> torch.Tensor:
-    data_dir = get_batch_folder(config, split, layer_name)
+    data_dir = config['out_folder']
     dset = MemoryMappedActivationsDataset(data_dir, layer_name, files_to_search)
     print("dset len", len(dset))
     return dset

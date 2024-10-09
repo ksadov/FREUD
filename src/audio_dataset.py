@@ -21,6 +21,9 @@ class AudioDataset(torch.utils.data.Dataset):
         for root, dirs, files in os.walk(self.audio_folder):
             for file in files:
                 if is_audio_file(file):
+                    # check if root is global path
+                    if not os.path.isabs(root):
+                        root = os.path.abspath(root)
                     audio_files.append(os.path.join(root, file))
         return audio_files
     
