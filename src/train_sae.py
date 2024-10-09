@@ -1,3 +1,5 @@
+
+from typing import Optional
 import torch
 import whisper
 from torch.amp import autocast
@@ -24,6 +26,30 @@ import time
 
 N_TRANSCRIPTS = 4
 
+def init_dataloader(from_disk: bool, data_path: str, whisper_model: str, sae_checkpoint: str, layer_name: str,
+                    device: torch.device, split: str, batch_size: int, dl_max_workers: int, subset_size: Optional[int]):
+    if from_disk:
+        dset = MemoryMappedActivationsDataset(data_path, layer_name)
+        feat_dim = dset.activation_shape[-1]
+        activation_dims = len(dset.activation_shape)
+        loader = torch.utils.data.DataLoader(dset, batch_size=batch_size)
+        dset_len = len(dset)
+    else:
+        loader = FlyActivationDataloader(
+            data_path=data_path,
+            whisper_model=whisper_model,
+            sae_checkpoint=sae_checkpoint,
+            layer_to_cache=layer_name,
+            device=device,
+            split=split,
+            batch_size=batch_size,
+            dl_max_workers=dl_max_workers,
+            subset_size=subset_size
+        )
+        feat_dim = loader.activation_shape[-1]
+        activation_dims = len(loader.activation_shape)
+        dset_len = len(loader.ls_dataset)
+    return loader, feat_dim, activation_dims, dset_len
 
 def validate(
     model: torch.nn.Module,
@@ -33,11 +59,12 @@ def validate(
     device: torch.device,
     activation_dims: int,
     layer_name: str,
-    whisper_model: str,
-    log_base_transcripts
+    whisper_model_name: str,
+    log_base_transcripts: bool,
+    from_disk: bool
 ):
     model.eval()
-    whisper_model = whisper.load_model(whisper_model)
+    whisper_model = whisper.load_model(whisper_model_name)
     whisper_sub = WhisperSubbedActivation(
         model=whisper_model,
         substitution_layer=layer_name,
@@ -49,10 +76,7 @@ def validate(
     base_transcripts = []
     base_filenames = []
 
-    val_dataset = MemoryMappedActivationsDataset(val_folder, layer_name)
-    val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=1, shuffle=False
-    )
+    val_loader, _, _, _ = init_dataloader(from_disk, val_folder, whisper_model_name, None, layer_name, device, "test-other", 1, 1, None)
     encoded_magnitude_values = torch.zeros(
         (len(val_loader), model.n_dict_components)).to(device)
     context_manager = autocast(device_type=str(
@@ -193,13 +217,14 @@ def train(seed: int,
           checkpoint: str,
           recon_alpha: float,
           layer_name: str,
-          whisper_model: str
+          whisper_model: str,
+          from_disk: bool,
           ):
     set_seeds(seed)
-    train_dataset = MemoryMappedActivationsDataset(train_folder, layer_name)
+    train_loader, feat_dim, activation_dims, dset_len = init_dataloader(from_disk, train_folder, whisper_model, None, layer_name, device, "test-other", batch_size, dl_max_workers, None)
+    train_loader = iter(train_loader)
+
     # train_dataset = TokenEmbeddingDataset()
-    feat_dim = train_loader.activation_shape[-1]
-    activation_dims = len(train_loader.activation_shape)
     model = AutoEncoder(feat_dim, n_dict_components).to(device)
     dist_model = model
 
@@ -257,8 +282,7 @@ def train(seed: int,
         load_checkpoint(state, checkpoint, device=device)
 
     recon_loss_fn = partial(mse_loss, ignored_index=-1, reduction="mean")
-    total_steps_per_epoch = len(
-        train_loader.ls_dataset) // (dataloader_kwargs['batch_size'] * grad_acc_steps)
+    total_steps_per_epoch = dset_len // (batch_size * grad_acc_steps)
 
     epoch = 0
     train_loader = iter(train_loader)
@@ -281,14 +305,8 @@ def train(seed: int,
                     filenames, activations = next(train_loader)
                     activations = activations.to(device)
                 except StopIteration:
-                    train_loader = iter(FlyActivationDataloader(
-                        whisper_model=whisper.load_model(whisper_model),
-                        data_path="/home/ksadov/whisper_sae_dataset",
-                        layer_to_cache=layer_name,
-                        device=device,
-                        split="train-other-500",
-                        dl_kwargs=dataloader_kwargs
-                    ))
+                    loader, _, _ = init_dataloader(from_disk, train_folder, whisper_model, None, layer_name, device, "train-other-500", batch_size, dl_max_workers, None)
+                    train_loader = iter(loader)
                     activations, filenames = next(train_loader)
                     activations = activations.to(device)
 
@@ -350,7 +368,7 @@ def train(seed: int,
                 val_loss_recon, val_loss_l1, subbed_transcripts, base_transcripts, base_filenames, \
                     encoded_mag_means, encoded_mag_stds = validate(
                         model, recon_loss_fn, recon_alpha, val_folder, device, activation_dims, layer_name,
-                        whisper_model, not logged_base_transcripts
+                        whisper_model, not logged_base_transcripts, from_disk
                     )
                 logged_base_transcripts = True
                 print(

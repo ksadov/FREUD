@@ -34,23 +34,22 @@ class FlyActivationDataloader(torch.utils.data.DataLoader):
             _, first_activation = next(iter(activations.items()))
             if self.sae_model:
                 _, c = self.sae_model(first_activation)
-                return c.shape
+                return c.squeeze().shape
             else:
-                return first_activation.shape
+                return first_activation.squeeze().shape
 
     def __iter__(self):
         for batch in self.ls_dataloader:
             self.whisper_cache.reset_state()
             mels, _, global_file_name, transcript = batch
-            with torch.no_grad():
-                self.whisper_cache.forward(mels)
-                activations = self.whisper_cache.activations
-                for name, act in activations.items():
-                    if self.sae_model:
-                        _, c = self.sae_model(act)
-                        yield c, global_file_name
-                    else:
-                        yield act, global_file_name
+            self.whisper_cache.forward(mels)
+            activations = self.whisper_cache.activations
+            for name, act in activations.items():
+                if self.sae_model:
+                    _, c = self.sae_model(act)
+                    yield global_file_name, c
+                else:
+                    yield global_file_name, act
     
     def __len__(self):
         return len(self.ls_dataloader)

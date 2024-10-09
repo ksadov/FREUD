@@ -82,7 +82,7 @@ def search_activations(batch_folder, neuron_idx, n_files, max_val):
 def get_top_fly(dataloader: FlyActivationDataloader, neuron_idx: int, n_files: int, max_val: Optional[float]) -> list:
     print("Searching activations...")
     pq = []
-    for act_batch, audio_files in tqdm(dataloader):
+    for audio_files, act_batch in tqdm(dataloader):
         for act, audio_file in zip(act_batch, audio_files):
             act = act.squeeze()[:, neuron_idx]
             trimmed_activation = trim_activation(audio_file, act)
