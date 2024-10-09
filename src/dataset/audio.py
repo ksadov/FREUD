@@ -37,13 +37,3 @@ class AudioDataset(torch.utils.data.Dataset):
     
     def __len__(self) -> int:
         return len(self.audio_files)
-
-def test_audio_dataset():
-    device = torch.device("cpu")
-    dataset = AudioDataset(
-        "/Users/ksadov/Documents/ml_experiments/whisper_sae/librispeech_data/LibriSpeech/test-other", device)
-    print(dataset[0])
-
-
-if __name__ == "__main__":
-    test_audio_dataset()
