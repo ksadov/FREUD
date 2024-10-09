@@ -5,17 +5,24 @@ from src.models.hooked_model import WhisperActivationCache, activations_from_aud
 
 
 class AutoEncoder(nn.Module):
-    def __init__(self, activation_size, n_dict_components, layer_name):
+    def __init__(self, hp: dict):
+        """
+        Autoencoder model for audio features
+
+        requires: hp must contain the following
+            - activation_size: int
+            - n_dict_components: int
+        """
         super(AutoEncoder, self).__init__()
+        self.hp = hp
         self.tied = True  # tie encoder and decoder weights
-        self.activation_size = activation_size
-        self.n_dict_components = n_dict_components
-        self.layer_name = layer_name
+        self.activation_size = hp['activation_size']
+        self.n_dict_components = hp['n_dict_components']
 
         # Only defining the decoder layer, encoder will share its weights
-        self.decoder = nn.Linear(n_dict_components, activation_size, bias=False)
+        self.decoder = nn.Linear(self.n_dict_components, self.activation_size, bias=False)
         # Create a bias layer
-        self.encoder_bias = nn.Parameter(torch.zeros(n_dict_components))
+        self.encoder_bias = nn.Parameter(torch.zeros(self.n_dict_components))
 
         # Initialize the decoder weights orthogonally
         nn.init.orthogonal_(self.decoder.weight)
@@ -36,7 +43,7 @@ class AutoEncoder(nn.Module):
 def init_from_checkpoint(checkpoint: str):
     checkpoint = torch.load(checkpoint)
     hp = checkpoint['hparams']
-    model = AutoEncoder(hp['activation_size'], hp['n_dict_components'], hp['layer_name'])
+    model = AutoEncoder(hp)
     model.load_state_dict(checkpoint['model'])
     model.eval()
     return model

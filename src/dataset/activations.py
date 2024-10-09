@@ -9,12 +9,15 @@ from src.models.hooked_model import init_cache
 from src.models.autoencoder import init_from_checkpoint
 
 class FlyActivationDataloader(torch.utils.data.DataLoader):
-    def __init__(self,  data_path: str, whisper_model: torch.nn.Module, sae_checkpoint: Optional[str], 
+    """
+    Dataloader for computing Whisper or SAE activations on the fly
+    """
+    def __init__(self,  data_path: str, whisper_model: str, sae_checkpoint: Optional[str], 
                  layer_to_cache: str, device: torch.device, batch_size: int, dl_max_workers: int,
                  subset_size: Optional[int] = None):
         self.whisper_cache = init_cache(whisper_model, layer_to_cache, device)
         self.whisper_cache.model.eval()
-        self.sae_model = init_from_checkpoint(sae_checkpoint) if sae_checkpoint else None
+        self.sae_model = init_from_checkpoint(sae_checkpoint, whisper_model, layer_to_cache) if sae_checkpoint else None
         self.dataset = AudioDataset(data_path, device)
         if subset_size:
             self.dataset = torch.utils.data.Subset(self.dataset, range(subset_size))
@@ -26,8 +29,10 @@ class FlyActivationDataloader(torch.utils.data.DataLoader):
         }
         self.dataloader = DataLoader(self.dataset, **dl_kwargs)
         self.activation_shape = self._get_activation_shape()
-        assert self.sae_model is None or layer_to_cache == self.sae_model.layer_name, \
+        assert self.sae_model is None or layer_to_cache == self.sae_model.hp['layer_name'], \
             "layer_to_cache must match the layer that the SAE model was trained on"
+        assert self.sae_model is None or self.sae_model.hp['whisper_model'] == whisper_model, \
+            "whisper_model must match the whisper_model that the SAE model was trained on"
 
     def _get_activation_shape(self):
         mels, _ = self.dataset[0]
@@ -57,6 +62,9 @@ class FlyActivationDataloader(torch.utils.data.DataLoader):
         
 
 class MemoryMappedActivationsDataset(Dataset):
+    """
+    Dataset for activations stored in memory-mapped files geneerated by src.scripts.collect_activations
+    """
     def __init__(self, data_dir, layer_name, max_size=None):
         self.data_dir = data_dir
         self.layer_name = layer_name
