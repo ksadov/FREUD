@@ -1,5 +1,4 @@
 import torch
-import os
 from librispeech_data import LibriSpeechDataset
 from hooked_model import init_cache
 from torch.utils.data import DataLoader
