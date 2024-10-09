@@ -299,7 +299,7 @@ def train(seed: int,
                     activations, _ = next(train_loader)
                     activations = activations.to(device)
                 except StopIteration:
-                    loader, _, _ = init_dataloader(from_disk, train_folder, whisper_model, None, layer_name, device, "train-other-500", batch_size, dl_max_workers, None)
+                    loader, _, _, _ = init_dataloader(from_disk, train_folder, whisper_model, None, layer_name, device, batch_size, dl_max_workers, None)
                     train_loader = iter(loader)
                     activations, filenames = next(train_loader)
                     activations = activations.to(device)

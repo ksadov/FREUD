@@ -1,12 +1,12 @@
 {
   "seed": 0,
-  "layer_name": "encoder.blocks.2",
+  "layer_name": "encoder.blocks.2.mlp.1",
   "whisper_model": "tiny",
-  "train_folder": "audio_data/librispeech/Librispeech/test-other",
-  "val_folder": "audio_data/librispeech/Librispeech/test-other",
+  "train_folder": "activations/mmap_ls_block_2",
+  "val_folder": "activations/mmap_ls_block_2",
   "device": "cpu",
   "n_dict_components": 10,
-  "run_dir": "runs/mac_fly_sae_test",
+  "run_dir": "runs/mac_mmap_sae_test",
   "lr": 0.0001,
   "weight_decay": 0.0,
   "steps": 100000,
@@ -19,5 +19,5 @@
   "val_every": 5,
   "checkpoint": null,
   "recon_alpha": 1.0,
-  "from_disk": false
+  "from_disk": true
 }
