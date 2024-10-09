@@ -1,9 +1,6 @@
 import torch
 from jaxtyping import Float
 from torch import Tensor, nn
-import torchaudio
-from librispeech_data import log_mel_spectrogram
-from constants import N_MELS, SAMPLE_RATE
 from hooked_model import WhisperActivationCache, activations_from_audio
 
 

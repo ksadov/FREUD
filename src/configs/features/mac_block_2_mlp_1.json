@@ -2,15 +2,10 @@
   "whisper_model": "tiny",
   "sae_model": null,
   "model_type": "whisper",
-  "layers": [
-    "encoder.blocks.2.mlp.1"
-  ],
-  "splits": [
-    "test-other"
-  ],
-  "batch_size": 16,
-  "data_path": "/Users/ksadov/Documents/ml_experiments/whisper_sae/librispeech_data",
+  "layer_to_cache": "encoder.blocks.2.mlp.1",
+  "batch_size": 1,
+  "data_path": "audio_data/audioset/audio/eval",
   "device": "cpu",
-  "out_folder_prefix": "activations/mmap_test_block_2_mlp_1",
-  "save_transcriptions": false
+  "out_folder": "activations/mmap_test_block_2",
+  "collect_max": 100
 }

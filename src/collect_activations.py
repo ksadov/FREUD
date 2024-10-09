@@ -1,91 +1,83 @@
-import pathlib
 import argparse
-import torch
-from hooked_model import WhisperActivationCache
-from librispeech_data import LibriSpeechDataset
-from torch.utils.data import DataLoader
-import whisper
 import json
+import os
+import pathlib
+import torch
 from tqdm import tqdm
-import multiprocessing
-from datetime import datetime
+from typing import Optional
+from activation_dataset import FlyActivationDataloader
+from npy_append_array import NpyAppendArray
 
+def save_activations_for_memory_mapping(activations, filenames, out_dir, layer_name):
+    os.makedirs(out_dir, exist_ok=True)
+    metadata_file = os.path.join(out_dir, f"{layer_name}_metadata.json")
+    tensor_file = os.path.join(out_dir, f"{layer_name}_tensors.npy")
+    
+    # Load existing metadata if it exists
+    if os.path.exists(metadata_file):
+        with open(metadata_file, 'r') as f:
+            metadata = json.load(f)
+    else:
+        metadata = {'filenames': [], 'tensor_shapes': []}
+    
+    # Prepare new data and update metadata
+    new_tensors = []
+    for filename, tensor in zip(filenames, activations):
+        metadata['filenames'].append(filename)
+        metadata['tensor_shapes'].append(list(tensor.shape))
+        new_tensors.append(tensor.cpu().numpy())
+    
+    # Save updated metadata
+    with open(metadata_file, 'w') as f:
+        json.dump(metadata, f)
+    
+    # Append tensor data to the file using NpyAppendArray
+    with NpyAppendArray(tensor_file) as npaa:
+        for tensor in new_tensors:
+            npaa.append(tensor.reshape(1, -1))  # Reshape to 2D array for appending
 
 def create_out_folder(folder_name):
     pathlib.Path(folder_name).mkdir(parents=True, exist_ok=True)
     return folder_name
 
-
-def save_batch(batch, out_folder, batch_id):
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    torch.save(batch, f"{out_folder}/batch_{batch_id}_{timestamp}.pt")
-
-
 def get_activations(
     data_path: str,
-    whisper_model: torch.nn.Module,
-    layers_to_cache: list[str],
-    split: str,
+    layer_to_cache: str,
+    whisper_model: str,
     batch_size: int,
     device: torch.device,
-    out_folder_prefix: str,
-    save_transcriptions: bool
+    out_folder: str,
+    collect_max: Optional[int]
 ):
-    whisper_cache = WhisperActivationCache(
-        model=whisper_model,
-        activation_regex=layers_to_cache,
-        device=device,
+    dataloader = FlyActivationDataloader(
+        data_path,
+        whisper_model,
+        None,
+        layer_to_cache,
+        device,
+        batch_size,
+        4,
+        collect_max
     )
-    whisper_cache.model.eval()
-    dataset = LibriSpeechDataset(data_path, split, device)
-    # dataset = torch.utils.data.Subset(dataset, range(1000))
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
-
-    batch_id = 0
     for batch in tqdm(dataloader):
-        whisper_cache.reset_state()
-        mels, _, global_file_name, transcript = batch
-        with torch.no_grad():
-            result = whisper_cache.forward(mels)
-        activations = whisper_cache.activations
-        for name, act in activations.items():
-            out_folder = create_out_folder(
-                f"{out_folder_prefix}/{split}/{name}")
-            activation_batch = {}
-            for i, file_name in enumerate(global_file_name):
-                # print("transcript for ", file_name, transcript[i])
-                # print("result for ", file_name, result[i].text)
-                if save_transcriptions:
-                    activation_batch[file_name] = (act[i], result[i].text)
-                else:
-                    activation_batch[file_name] = act[i]
-            if activation_batch:
-                save_batch((activation_batch),
-                           out_folder, batch_id)
-        batch_id += 1
-
+        activations, global_filenames = batch
+        save_activations_for_memory_mapping(activations, global_filenames, out_folder, layer_to_cache)
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("config", type=str, default="tiny.json")
+    parser.add_argument("--config", type=str)
     args = parser.parse_args()
     with open(args.config, "r") as f:
         config = json.load(f)
-    whisper_model = whisper.load_model(config["whisper_model"])
-    print("Named modules", [name for name, _ in whisper_model.named_modules()])
-    for split in config["splits"]:
-        print(f"Processing split {split}")
         get_activations(
             config["data_path"],
-            whisper_model,
-            config["layers"],
-            split,
+            config["layer_to_cache"],
+            config["whisper_model"],
             config["batch_size"],
             torch.device(config["device"]),
-            config["out_folder_prefix"],
-            config["save_transcriptions"]
+            create_out_folder(config["out_folder"]),
+            config["collect_max"]
         )
-
 
 if __name__ == "__main__":
     main()

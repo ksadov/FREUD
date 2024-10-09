@@ -5,31 +5,26 @@ import torch
 from jaxtyping import Float
 from torch import Tensor
 import whisper
-from natsort import natsorted
-from librispeech_data import get_mels_from_audio_path
+from audio_utils import get_mels_from_audio_path
 
 class BaseActivationModule(ABC):
     def __init__(
         self,
         model: torch.nn.Module,
+        layer_to_cache: str,
         hook_fn: Optional[Callable] = None,
-        activations_to_cache: list[str] = [],
     ):
         """
-        Base class using pytorch hooks to cache all intermediate
-        activations in [activations_to_cache]
+        Base class using pytorch hooks to cache intermediate activations at a specified layer
         Parent classes should inherit from this class, implementing their own custom_forward method
         You can optionally pass in your own hook_fn
         """
         assert model is not None, "no model found"
         self.model = model
         self.step = 0
-        self.activations = {}
+        self.activations = []
         self.hooks = []
-        self.activations_to_cache = activations_to_cache
-
-        # Natural sort to impose a consistent order
-        self.activations_to_cache = natsorted(self.activations_to_cache)
+        self.layer_to_cache = layer_to_cache
         self.hook_fn = hook_fn
 
     def forward(self, x: Float[Tensor, "bsz seq_len n_mels"]):  # noqa: F821
@@ -45,7 +40,7 @@ class BaseActivationModule(ABC):
 
     def register_hooks(self):
         for name, module in self.model.named_modules():
-            if name in self.activations_to_cache:
+            if name == self.layer_to_cache:
                 hook_fn = self.hook_fn if self.hook_fn is not None else self._get_caching_hook(
                     name)
                 forward_hook = module.register_forward_hook(hook_fn)
@@ -54,7 +49,7 @@ class BaseActivationModule(ABC):
     def _get_caching_hook(self, name):
         def hook(module, input, output):
             output_ = output.detach().cpu()
-            self.activations[f"{name}"] = output_
+            self.activations.append(output_)
 
         return hook
 
@@ -75,7 +70,7 @@ class BaseActivationModule(ABC):
         raise NotImplementedError
 
     def reset_state(self):
-        self.activations = {}
+        self.activations = []
 
 
 class WhisperActivationCache(BaseActivationModule):
@@ -85,12 +80,12 @@ class WhisperActivationCache(BaseActivationModule):
 
     def __init__(
         self,
+        layer_to_cache: str,
         hook_fn: Optional[Callable] = None,
         model: Optional[torch.nn.Module] = None,
-        activations_to_cache: list[str] = [],
         device: torch.device = torch.device("cuda"),
     ):
-        super().__init__(model, hook_fn, activations_to_cache)
+        super().__init__(model, layer_to_cache, hook_fn)
         self.device = device
 
     def custom_forward(
@@ -105,11 +100,6 @@ class WhisperActivationCache(BaseActivationModule):
     def _get_caching_hook(self, name):
         # custom caching function for whisper
         def hook(module, input, output):
-            if "decoder" in name:
-                # we don't cache the first activations that correspond to the sos/lang tokens
-                if output.shape[1] > 1:
-                    del self.activations[f"{name}"]
-                    return
             output_ = output.detach().cpu()
             """
             if name in self.activations:
@@ -121,7 +111,7 @@ class WhisperActivationCache(BaseActivationModule):
             else:
                 self.activations[f"{name}"] = output_
             """
-            self.activations[f"{name}"] = output_
+            self.activations.append(output_)
 
         return hook
 
@@ -167,10 +157,10 @@ class WhisperSubbedActivation(torch.nn.Module):
 
         return hook
     
-def init_cache(whisper_model: str, activations_to_cache: list[str], device: torch.device) -> WhisperActivationCache:
+def init_cache(whisper_model: str, layer_to_cache: str, device: torch.device) -> WhisperActivationCache:
     whisper_model = whisper.load_model(whisper_model)
     whisper_model.eval()
-    return WhisperActivationCache(model=whisper_model, activations_to_cache=activations_to_cache, device=device)
+    return WhisperActivationCache(model=whisper_model, layer_to_cache=layer_to_cache, device=device)
 
 def activations_from_audio(model: WhisperActivationCache, audio_fname: str) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
     with torch.no_grad():
