@@ -20,16 +20,16 @@ class FlyActivationDataloader(torch.utils.data.DataLoader):
         self.whisper_cache = init_cache(whisper_model, layer_to_cache, device)
         self.whisper_cache.model.eval()
         self.sae_model = init_from_checkpoint(sae_checkpoint, whisper_model, layer_to_cache) if sae_checkpoint else None
-        self.dataset = AudioDataset(data_path, device)
+        self._dataset = AudioDataset(data_path, device)
         if subset_size:
-            self.dataset = torch.utils.data.Subset(self.dataset, range(subset_size))
+            self._dataset = torch.utils.data.Subset(self._dataset, range(subset_size))
         dl_kwargs = {
             "batch_size": batch_size,
             "pin_memory": False,
             "drop_last": True,
             "num_workers": dl_max_workers,
         }
-        self.dataloader = DataLoader(self.dataset, **dl_kwargs)
+        self.dataloader = DataLoader(self._dataset, **dl_kwargs)
         self.activation_shape = self._get_activation_shape()
         assert self.sae_model is None or layer_to_cache == self.sae_model.hp['layer_name'], \
             "layer_to_cache must match the layer that the SAE model was trained on"
@@ -37,7 +37,7 @@ class FlyActivationDataloader(torch.utils.data.DataLoader):
             "whisper_model must match the whisper_model that the SAE model was trained on"
 
     def _get_activation_shape(self):
-        mels, _ = self.dataset[0]
+        mels, _ = self._dataset[0]
         with torch.no_grad():
             self.whisper_cache.forward(mels)
             first_activation = self.whisper_cache.activations[0]

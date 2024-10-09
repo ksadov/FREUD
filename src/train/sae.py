@@ -5,7 +5,7 @@ import whisper
 from torch.amp import autocast
 from tqdm import tqdm
 from src.dataset.activations import FlyActivationDataloader, MemoryMappedActivationsDataset
-from librispeech_data import get_mels_from_audio_path
+from src.utils.audio_utils import get_mels_from_audio_path
 from src.models.hooked_model import WhisperSubbedActivation
 import numpy as np
 import random
@@ -26,7 +26,7 @@ import time
 N_TRANSCRIPTS = 4
 
 def init_dataloader(from_disk: bool, data_path: str, whisper_model: str, sae_checkpoint: str, layer_name: str,
-                    device: torch.device, split: str, batch_size: int, dl_max_workers: int, subset_size: Optional[int]):
+                    device: torch.device, batch_size: int, dl_max_workers: int, subset_size: Optional[int]):
     if from_disk:
         dset = MemoryMappedActivationsDataset(data_path, layer_name)
         feat_dim = dset.activation_shape[-1]
@@ -40,14 +40,13 @@ def init_dataloader(from_disk: bool, data_path: str, whisper_model: str, sae_che
             sae_checkpoint=sae_checkpoint,
             layer_to_cache=layer_name,
             device=device,
-            split=split,
             batch_size=batch_size,
             dl_max_workers=dl_max_workers,
             subset_size=subset_size
         )
         feat_dim = loader.activation_shape[-1]
         activation_dims = len(loader.activation_shape)
-        dset_len = len(loader.ls_dataset)
+        dset_len = len(loader._dataset)
     return loader, feat_dim, activation_dims, dset_len
 
 def validate(
@@ -75,7 +74,7 @@ def validate(
     base_transcripts = []
     base_filenames = []
 
-    val_loader, _, _, _ = init_dataloader(from_disk, val_folder, whisper_model_name, None, layer_name, device, "test-other", 1, 1, None)
+    val_loader, _, _, _ = init_dataloader(from_disk, val_folder, whisper_model_name, None, layer_name, device, 1, 1, None)
     encoded_magnitude_values = torch.zeros(
         (len(val_loader), model.n_dict_components)).to(device)
     context_manager = autocast(device_type=str(
@@ -83,7 +82,7 @@ def validate(
 
     for i, datapoints in tqdm(enumerate(val_loader), total=len(val_loader)):
         with torch.no_grad(), context_manager:
-            filenames, activations = datapoints
+            activations, filenames = datapoints
             activations = activations.to(device)
             filenames = filenames[0]
             pred, c = model(activations)
@@ -209,7 +208,6 @@ def train(seed: int,
           clip_thresh: float,
           batch_size: int,
           dl_max_workers: int,
-          log_every: int,
           log_tb_every: int,
           save_every: int,
           val_every: int,
@@ -220,21 +218,9 @@ def train(seed: int,
           from_disk: bool,
           ):
     set_seeds(seed)
-    train_loader, feat_dim, activation_dims, dset_len = init_dataloader(from_disk, train_folder, whisper_model, None, layer_name, device, "test-other", batch_size, dl_max_workers, None)
+    train_loader, feat_dim, activation_dims, dset_len = init_dataloader(from_disk, train_folder, whisper_model, None, layer_name, device, batch_size, dl_max_workers, None)
     train_loader = iter(train_loader)
 
-    # train_dataset = TokenEmbeddingDataset()
-    model = AutoEncoder(feat_dim, n_dict_components).to(device)
-    dist_model = model
-
-    # make run dir
-    os.makedirs(run_dir, exist_ok=True)
-    checkpoint_out_dir = run_dir + "/checkpoints"
-    os.makedirs(checkpoint_out_dir, exist_ok=True)
-
-    # setup logging
-    tb_logger = prepare_tb_logging(run_dir)
-    # add hparams
     hparam_dict = {
         "lr": lr,
         "weight_decay": weight_decay,
@@ -248,6 +234,18 @@ def train(seed: int,
         "whisper_model": whisper_model,
         "activation_size": feat_dim,
     }
+
+    # train_dataset = TokenEmbeddingDataset()
+    model = AutoEncoder(hparam_dict).to(device)
+    dist_model = model
+
+    # make run dir
+    os.makedirs(run_dir, exist_ok=True)
+    checkpoint_out_dir = run_dir + "/checkpoints"
+    os.makedirs(checkpoint_out_dir, exist_ok=True)
+
+    # setup logging
+    tb_logger = prepare_tb_logging(run_dir)
     tb_logger.add_text("hparams", json.dumps(hparam_dict, indent=4))
     model_out = run_dir + "/model"
     print("Model: %.2fM" % (sum(p.numel()
@@ -298,7 +296,7 @@ def train(seed: int,
             step_start_time = time.time()
             for _ in range(grad_acc_steps):
                 try:
-                    filenames, activations = next(train_loader)
+                    activations, _ = next(train_loader)
                     activations = activations.to(device)
                 except StopIteration:
                     loader, _, _ = init_dataloader(from_disk, train_folder, whisper_model, None, layer_name, device, "train-other-500", batch_size, dl_max_workers, None)
