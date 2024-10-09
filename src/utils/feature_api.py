@@ -3,8 +3,7 @@ from typing import Optional
 import torch
 import torchaudio
 from src.utils.constants import SAMPLE_RATE, TIMESTEP_S
-from src.dataset.mmapped_activations import MemoryMappedActivationsDataset
-from src.dataset.activation_dataset import FlyActivationDataloader
+from src.dataset.activations import MemoryMappedActivationsDataset, FlyActivationDataloader
 from tqdm import tqdm
 
 def init_map(layer_name: str, config: dict, split: str, files_to_search: int) -> torch.Tensor:

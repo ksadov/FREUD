@@ -1,14 +1,13 @@
 import argparse
 import json
 import os
-import pathlib
-from pathlib import Path
 import torch
+from pathlib import Path
 from tqdm import tqdm
 from typing import Optional
 from npy_append_array import NpyAppendArray
 
-from src.dataset.activation_dataset import FlyActivationDataloader
+from src.dataset.activations import FlyActivationDataloader
 
 def save_activations_for_memory_mapping(metadata_file: Path, tensor_file: Path, activations: torch.tensor, 
                                         filenames: list[str]):

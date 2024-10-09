@@ -4,8 +4,7 @@ import torch
 import whisper
 from torch.amp import autocast
 from tqdm import tqdm
-from src.dataset.mmapped_activations import MemoryMappedActivationsDataset
-from src.dataset.activation_dataset import FlyActivationDataloader
+from src.dataset.activations import FlyActivationDataloader, MemoryMappedActivationsDataset
 from librispeech_data import get_mels_from_audio_path
 from src.models.hooked_model import WhisperSubbedActivation
 import numpy as np
