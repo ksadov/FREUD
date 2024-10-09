@@ -37,5 +37,5 @@ class MemoryMappedActivationsDataset(Dataset):
         # Reshape the tensor data to its original shape
         tensor = torch.from_numpy(tensor_data.reshape(tensor_shape))
         
-        return filename, tensor
+        return tensor, filename
  

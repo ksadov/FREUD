@@ -7,20 +7,6 @@ from mmapped_activations import MemoryMappedActivationsDataset
 from activation_dataset import FlyActivationDataloader
 from tqdm import tqdm
 
-
-def load_activations(batch_folder: str) -> dict:
-    activation_map = {}
-    for batch_file in os.listdir(batch_folder)[:50]:
-        batch_path = os.path.join(batch_folder, batch_file)
-        batch = torch.load(batch_path)
-        # if batch values are tuples, take the first element
-        values_are_tuples = isinstance(list(batch.items())[0][1], tuple)
-        if values_are_tuples:
-            batch = {k: v[0] for k, v in batch.items()}
-        activation_map.update(batch)
-    return activation_map
-
-
 def init_map(layer_name: str, config: dict, split: str, files_to_search: int) -> torch.Tensor:
     data_dir = config['out_folder']
     dset = MemoryMappedActivationsDataset(data_dir, layer_name, files_to_search)
@@ -41,17 +27,15 @@ def get_top_activating_files(activation_audio_map: dict, n_files: int, neuron_id
 
 def top_activating_files(activation_audios: MemoryMappedActivationsDataset, n_files: int, neuron_idx: int, max_val: Optional[float]) -> list:
     top = []
-    for audio_file, activation in activation_audios:
+    for activation, audio_file in activation_audios:
         activation_at_idx = activation.transpose(0, 1)[neuron_idx]
         trimmed_activation = trim_activation(audio_file, activation_at_idx)
         max_activation_value = trimmed_activation.max().item()
         if max_val is None or max_activation_value < max_val:
             max_activation_loc = trimmed_activation.argmax().item()
             max_activation_time = max_activation_loc * TIMESTEP_S
-            top.append((audio_file, trimmed_activation,
-                        max_activation_value, max_activation_time))
+            top.append((audio_file, trimmed_activation, max_activation_value, max_activation_time))
             top.sort(key=lambda x: x[2], reverse=True)
-            top = top[:n_files]
     return top
 
 def search_activations(batch_folder, neuron_idx, n_files, max_val):
@@ -77,7 +61,7 @@ def search_activations(batch_folder, neuron_idx, n_files, max_val):
 def get_top_fly(dataloader: FlyActivationDataloader, neuron_idx: int, n_files: int, max_val: Optional[float]) -> list:
     print("Searching activations...")
     pq = []
-    for audio_files, act_batch in tqdm(dataloader):
+    for act_batch, audio_files in tqdm(dataloader):
         for act, audio_file in zip(act_batch, audio_files):
             act = act.squeeze()[:, neuron_idx]
             trimmed_activation = trim_activation(audio_file, act)

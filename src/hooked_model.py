@@ -22,7 +22,7 @@ class BaseActivationModule(ABC):
         assert model is not None, "no model found"
         self.model = model
         self.step = 0
-        self.activations = []
+        self.activations = None
         self.hooks = []
         self.layer_to_cache = layer_to_cache
         self.hook_fn = hook_fn
@@ -49,7 +49,8 @@ class BaseActivationModule(ABC):
     def _get_caching_hook(self, name):
         def hook(module, input, output):
             output_ = output.detach().cpu()
-            self.activations.append(output_)
+            # assume that we go through each layer only once
+            self.activations = output_
 
         return hook
 
@@ -70,7 +71,7 @@ class BaseActivationModule(ABC):
         raise NotImplementedError
 
     def reset_state(self):
-        self.activations = []
+        self.activations = None
 
 
 class WhisperActivationCache(BaseActivationModule):
@@ -101,18 +102,8 @@ class WhisperActivationCache(BaseActivationModule):
         # custom caching function for whisper
         def hook(module, input, output):
             output_ = output.detach().cpu()
-            """
-            if name in self.activations:
-                print("NAME", name)
-                print("ACTIVATIONS", self.activations.shape)
-                self.activations[f"{name}"] = torch.cat(
-                    (self.activations[f"{name}"], output_), dim=1
-                )
-            else:
-                self.activations[f"{name}"] = output_
-            """
-            self.activations.append(output_)
-
+            self.activations = output_
+            
         return hook
 
 
