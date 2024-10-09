@@ -85,10 +85,10 @@ def get_activations(
         os.remove(tensor_file)
     # create directory for the output
     os.makedirs(out_folder, exist_ok=True)
-
-    for batch in tqdm(dataloader):
-        activations, global_filenames = batch
-        save_activations_for_memory_mapping(metadata_file, tensor_file, activations, global_filenames)
+    with torch.no_grad():
+        for batch in tqdm(dataloader):
+            activations, global_filenames = batch
+            save_activations_for_memory_mapping(metadata_file, tensor_file, activations, global_filenames)
 
 def main():
     parser = argparse.ArgumentParser()

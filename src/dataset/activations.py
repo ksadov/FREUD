@@ -19,7 +19,7 @@ class FlyActivationDataloader(torch.utils.data.DataLoader):
                  subset_size: Optional[int] = None):
         self.whisper_cache = init_cache(whisper_model, layer_to_cache, device)
         self.whisper_cache.model.eval()
-        self.sae_model = init_from_checkpoint(sae_checkpoint, whisper_model, layer_to_cache) if sae_checkpoint else None
+        self.sae_model = init_from_checkpoint(sae_checkpoint) if sae_checkpoint else None
         self._dataset = AudioDataset(data_path, device)
         if subset_size:
             self._dataset = torch.utils.data.Subset(self._dataset, range(subset_size))
