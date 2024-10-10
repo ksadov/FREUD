@@ -78,8 +78,10 @@ def extract_files(file_dir: str):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output_dir", type=str, default="audio_data")
-    parser.add_argument("--dataset", type=str, default="librispeech")
+    parser.add_argument("--output_dir", type=str, default="audio_data", 
+                        help="The directory to save the downloaded files")
+    parser.add_argument("--dataset", type=str, default="librispeech", 
+                        help="The dataset to download (must be one of librispeech, audioset)")
     args = parser.parse_args()
     out_dir = os.path.join(args.output_dir, args.dataset)
     if args.dataset not in roots:

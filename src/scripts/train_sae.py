@@ -4,7 +4,7 @@ import torch
 import whisper
 from torch.amp import autocast
 from tqdm import tqdm
-from src.dataset.activations import FlyActivationDataloader, MemoryMappedActivationsDataset
+from src.dataset.activations import FlyActivationDataLoader, MemoryMappedActivationDataLoader
 from src.utils.audio_utils import get_mels_from_audio_path
 from src.models.hooked_model import WhisperSubbedActivation
 import numpy as np
@@ -28,25 +28,27 @@ N_TRANSCRIPTS = 4
 def init_dataloader(from_disk: bool, data_path: str, whisper_model: str, sae_checkpoint: str, layer_name: str,
                     device: torch.device, batch_size: int, dl_max_workers: int, subset_size: Optional[int]):
     if from_disk:
-        dset = MemoryMappedActivationsDataset(data_path, layer_name)
-        feat_dim = dset.activation_shape[-1]
-        activation_dims = len(dset.activation_shape)
-        loader = torch.utils.data.DataLoader(dset, batch_size=batch_size)
-        dset_len = len(dset)
+        loader = MemoryMappedActivationDataLoader(
+            data_path=data_path,
+            layer_name=layer_name,
+            batch_size=batch_size,
+            dl_max_workers=dl_max_workers,
+            subset_size=subset_size
+        )
     else:
-        loader = FlyActivationDataloader(
+        loader = FlyActivationDataLoader(
             data_path=data_path,
             whisper_model=whisper_model,
             sae_checkpoint=sae_checkpoint,
-            layer_to_cache=layer_name,
+            layer_name=layer_name,
             device=device,
             batch_size=batch_size,
             dl_max_workers=dl_max_workers,
             subset_size=subset_size
         )
-        feat_dim = loader.activation_shape[-1]
-        activation_dims = len(loader.activation_shape)
-        dset_len = len(loader._dataset)
+    feat_dim = loader.activation_shape[-1]
+    activation_dims = len(loader.activation_shape)
+    dset_len = loader.dataset_length
     return loader, feat_dim, activation_dims, dset_len
 
 def validate(
@@ -419,7 +421,7 @@ def train(seed: int,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, required=True)
+    parser.add_argument("--config", type=str, required=True, help="Path to train configuration file")
     args = parser.parse_args()
     # load config json
     with open(args.config, "r") as f:

@@ -60,9 +60,10 @@ def serve_audio(filename):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, required=True)
-    parser.add_argument('--from_disk', action='store_true')
-    parser.add_argument('--files_to_search', type=int, default=None)
+    parser.add_argument('--config', type=str, required=True, help='Path to feature configuration file')
+    parser.add_argument('--from_disk', action='store_true', help='Whether to load activations from disk')
+    parser.add_argument('--files_to_search', type=int, default=None, 
+                        help='Number of files to search (None to search all)')
     args = parser.parse_args()
     load_activation_map(args.config, args.from_disk, args.files_to_search)
     app.run(debug=True, host='0.0.0.0', port=5555)

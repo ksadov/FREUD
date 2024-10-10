@@ -7,7 +7,7 @@ from tqdm import tqdm
 from typing import Optional
 from npy_append_array import NpyAppendArray
 
-from src.dataset.activations import FlyActivationDataloader
+from src.dataset.activations import FlyActivationDataLoader
 
 
 def save_activations_for_memory_mapping(metadata_file: Path, tensor_file: Path, activations: torch.tensor, 
@@ -47,37 +47,38 @@ def save_activations_for_memory_mapping(metadata_file: Path, tensor_file: Path, 
 
 def get_activations(
     data_path: str,
-    layer_to_cache: str,
+    layer_name: str,
     whisper_model: str,
     sae_model: Optional[str],
     batch_size: int,
     device: torch.device,
     out_folder: str,
+    max_workers: int,
     collect_max: Optional[int]
 ):
     """
     If sae_model is specified, collect activations from sae_model, otherwise collect activations from whisper_model
 
     :param data_path: Path to the data folder
-    :param layer_to_cache: Layer to cache activations for
+    :param layer_name: Layer to cache activations for
     :param whisper_model: String corresponding to the whisper model name, i.e "tiny"
     :param sae_model: Path to SAE checkpoint
     :param batch_size: Batch size for the dataloader
     :param device: Device to run the model on
     """
-    dataloader = FlyActivationDataloader(
+    dataloader = FlyActivationDataLoader(
         data_path,
         whisper_model,
         sae_model,
-        layer_to_cache,
+        layer_name,
         device,
         batch_size,
-        4,
+        max_workers,
         collect_max
     )
 
-    metadata_file = os.path.join(out_folder, f"{layer_to_cache}_metadata.json")
-    tensor_file = os.path.join(out_folder, f"{layer_to_cache}_tensors.npy")
+    metadata_file = os.path.join(out_folder, f"{layer_name}_metadata.json")
+    tensor_file = os.path.join(out_folder, f"{layer_name}_tensors.npy")
     # delete existing metadata and tensor files
     if os.path.exists(metadata_file):
         os.remove(metadata_file)
@@ -92,19 +93,20 @@ def get_activations(
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str)
+    parser.add_argument("--config", type=str, help="Path to feature configuration file")
     args = parser.parse_args()
     with open(args.config, "r") as f:
         config = json.load(f)
         os.makedirs(config["out_folder"], exist_ok=True)
         get_activations(
             config["data_path"],
-            config["layer_to_cache"],
+            config["layer_name"],
             config["whisper_model"],
             config["sae_model"],
             config["batch_size"],
             torch.device(config["device"]),
             config["out_folder"],
+            config["dl_max_workers"],
             config.get("collect_max", None)
         )
 

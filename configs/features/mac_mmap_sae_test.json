@@ -1,10 +1,11 @@
 {
   "whisper_model": "tiny",
-  "sae_model": null,
-  "layer_to_cache": "encoder.blocks.2.mlp.1",
-  "batch_size": 1,
+  "sae_model": "runs/mac_mmap_sae_test/checkpoints/bestval.pth",
+  "layer_name": "encoder.blocks.2.mlp.1",
+  "batch_size": 2,
   "data_path": "audio_data/librispeech/Librispeech/test-other",
   "device": "cpu",
   "out_folder": "activations/mmap_ls_block_2",
+  "dl_max_workers": 0,
   "collect_max": 50
 }
