@@ -3,6 +3,7 @@ import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugin/wavesurfer.regions.min.js';
 import SpectrogramPlugin from 'wavesurfer.js/dist/plugin/wavesurfer.spectrogram.min.js';
 import CursorPlugin from 'wavesurfer.js/src/plugin/cursor';
+import Button from 'react-bootstrap/Button';
 
 const API_BASE_URL = 'http://localhost:5555';  // Replace with your actual IP address
 
@@ -132,7 +133,7 @@ const AudioPlayer = ({ audioFile, activations }) => {
   };
 
   return (
-    <div className="mb-4">
+    <div className="mb-4 border rounded border-2">
       {/* Container for both waveform and spectrogram to overlay them */}
       <div style={{ position: 'relative', height: '100px' }} alt={audioFile}>
         {/* Waveform container */}
@@ -140,11 +141,11 @@ const AudioPlayer = ({ audioFile, activations }) => {
         {/* Spectrogram container overlaying the waveform */}
         <div ref={spectrogramRef} style={{ position: 'absolute', width: '100%', height: '100%', zIndex: -100 }} />
       </div>
-      <div className="flex items-center mt-2">
-        <button onClick={togglePlayPause} className="">
+      <div className="flex bg-light items-center p-1">
+        <Button onClick={togglePlayPause} className="p-1">
           {isPlaying ? 'Pause' : 'Play'}
-        </button>
-        <span className="text-sm font-mono mr-4">
+        </Button>
+        <span className="text-sm font-mono mx-2">
           {formatTime(currentTime)} / {formatTime(duration)}
         </span>
         <span className="text-sm font-mono" style={{ color: currentActivation >= 0 ? 'green' : 'red' }}>
@@ -255,13 +256,13 @@ const AudioPlayerWithActivation = () => {
             disabled={isLoading || !isServerReady || !!error}
           />
         </div>
-        <button
+        <Button
           type="submit"
-          className=""
+          className="px-4 py-2"
           disabled={isLoading || !isServerReady || !!error}
         >
           Update
-        </button>
+        </Button>
       </form>
       {isLoading && <p>Loading...</p>}
       {!isServerReady && <p>Waiting for server...</p>}
