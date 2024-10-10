@@ -141,7 +141,7 @@ const AudioPlayer = ({ audioFile, activations }) => {
         <div ref={spectrogramRef} style={{ position: 'absolute', width: '100%', height: '100%', zIndex: -100 }} />
       </div>
       <div className="flex items-center mt-2">
-        <button onClick={togglePlayPause} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 mr-4">
+        <button onClick={togglePlayPause} className="">
           {isPlaying ? 'Pause' : 'Play'}
         </button>
         <span className="text-sm font-mono mr-4">
@@ -232,7 +232,7 @@ const AudioPlayerWithActivation = () => {
       {error && <p className="text-red-500">{error}</p>}
       <form onSubmit={handleSubmit} className="mb-4">
         <div className="mb-2">
-          <label htmlFor="neuronIdx" className="mr-2">Neuron Index:</label>
+          <label htmlFor="neuronIdx" className="mx-2">Neuron Index:</label>
           <input
             id="neuronIdx"
             type="number"
@@ -244,7 +244,7 @@ const AudioPlayerWithActivation = () => {
           />
         </div>
         <div className="mb-2">
-          <label htmlFor="maxVal" className="mr-2">Max Activation Value (optional):</label>
+          <label htmlFor="maxVal" className="mx-2">Max Activation Value (optional):</label>
           <input
             id="maxVal"
             type="number"
@@ -257,7 +257,7 @@ const AudioPlayerWithActivation = () => {
         </div>
         <button
           type="submit"
-          className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+          className=""
           disabled={isLoading || !isServerReady || !!error}
         >
           Update
