@@ -21,8 +21,8 @@ const AudioPlayer = ({ audioFile, activations }) => {
 
     wavesurferRef.current = WaveSurfer.create({
       container: waveformRef.current,
-      waveColor: 'violet',
-      progressColor: 'purple',
+      waveColor: 'rgba(0,0,0,0)',
+      progressColor: 'rgba(0,0,0,0)',
       cursorColor: 'navy',
       height: 100,
       responsive: true,
@@ -32,6 +32,7 @@ const AudioPlayer = ({ audioFile, activations }) => {
           wavesurfer: wavesurferRef.current,
           container: spectrogramRef.current,
           labels: true,
+          // Ensure spectrogram height matches the waveform height for proper overlay
           height: 100,
         })
       ]
@@ -116,8 +117,13 @@ const AudioPlayer = ({ audioFile, activations }) => {
 
   return (
     <div className="mb-4">
-      <div ref={waveformRef} />
-      <div ref={spectrogramRef} />
+      {/* Container for both waveform and spectrogram to overlay them */}
+      <div style={{ position: 'relative', height: '100px' }}>
+        {/* Waveform container */}
+        <div ref={waveformRef} style={{ position: 'absolute', width: '500px', height: '100%' }} />
+        {/* Spectrogram container overlaying the waveform */}
+        <div ref={spectrogramRef} style={{ position: 'absolute', width: '500px', height: '100%', zIndex: -100 }} />
+      </div>
       <div className="flex items-center mt-2">
         <button onClick={togglePlayPause} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 mr-4">
           {isPlaying ? 'Pause' : 'Play'}
