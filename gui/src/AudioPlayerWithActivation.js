@@ -4,6 +4,7 @@ import RegionsPlugin from 'wavesurfer.js/dist/plugin/wavesurfer.regions.min.js';
 import SpectrogramPlugin from 'wavesurfer.js/dist/plugin/wavesurfer.spectrogram.min.js';
 import CursorPlugin from 'wavesurfer.js/src/plugin/cursor';
 import Button from 'react-bootstrap/Button';
+import { IoMdPlay, IoMdPause } from "react-icons/io";
 
 const API_BASE_URL = 'http://localhost:5555';  // Replace with your actual IP address
 
@@ -142,8 +143,8 @@ const AudioPlayer = ({ audioFile, activations }) => {
         <div ref={spectrogramRef} style={{ position: 'absolute', width: '100%', height: '100%', zIndex: -100 }} />
       </div>
       <div className="flex bg-light items-center p-1">
-        <Button onClick={togglePlayPause} className="p-1">
-          {isPlaying ? 'Pause' : 'Play'}
+        <Button onClick={togglePlayPause} variant="outline-primary" className=" px-2 py-1">
+          {isPlaying ? <IoMdPause size={24} /> : <IoMdPlay size={24} />}
         </Button>
         <span className="text-sm font-mono mx-2">
           {formatTime(currentTime)} / {formatTime(duration)}
@@ -152,7 +153,7 @@ const AudioPlayer = ({ audioFile, activations }) => {
           Activation: {currentActivation.toFixed(4)}
         </span>
       </div>
-    </div>
+    </div >
   );
 };
 
