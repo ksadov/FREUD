@@ -31,9 +31,12 @@ const AudioPlayer = ({ audioFile, activations }) => {
         SpectrogramPlugin.create({
           wavesurfer: wavesurferRef.current,
           container: spectrogramRef.current,
-          labels: true,
+          labels: false,
           // Ensure spectrogram height matches the waveform height for proper overlay
           height: 100,
+          scale: 'mel',
+          fftSamples: 512,
+          windowFunc: 'hann'
         })
       ]
     });
