@@ -82,11 +82,13 @@ const AudioPlayer = ({ audioFile, activations }) => {
     if (wavesurferRef.current && activations.length > 0) {
       wavesurferRef.current.regions.clear();
 
+      const maxActivation = Math.max(...activations.map(Math.abs));
+
       activations.forEach((activation, index) => {
         wavesurferRef.current.addRegion({
           start: index / activations.length * wavesurferRef.current.getDuration(),
           end: (index + 1) / activations.length * wavesurferRef.current.getDuration(),
-          color: getColorFromActivation(activation),
+          color: getColorFromActivation(activation / maxActivation),
           drag: false,
           resize: false,
         });
