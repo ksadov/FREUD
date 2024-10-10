@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugin/wavesurfer.regions.min.js';
 import SpectrogramPlugin from 'wavesurfer.js/dist/plugin/wavesurfer.spectrogram.min.js';
+import CursorPlugin from 'wavesurfer.js/src/plugin/cursor';
 
 const API_BASE_URL = 'http://localhost:5555';  // Replace with your actual IP address
 
@@ -31,12 +32,21 @@ const AudioPlayer = ({ audioFile, activations }) => {
         SpectrogramPlugin.create({
           wavesurfer: wavesurferRef.current,
           container: spectrogramRef.current,
-          labels: false,
           // Ensure spectrogram height matches the waveform height for proper overlay
           height: 100,
           scale: 'mel',
           fftSamples: 512,
           windowFunc: 'hann'
+        }),
+        CursorPlugin.create({
+          showTime: true,
+          opacity: 1,
+          customShowTimeStyle: {
+            'background-color': '#000',
+            color: '#fff',
+            padding: '2px',
+            'font-size': '10px'
+          }
         })
       ]
     });
