@@ -4,7 +4,9 @@ import AudioPlayerWithActivation from './AudioPlayerWithActivation';
 function App() {
   return (
     <div className="App">
-      <h1>Whisper Model Visualization</h1>
+      <h1 className="p-4">
+        Whisper Interpretability
+      </h1>
       <AudioPlayerWithActivation />
     </div>
   );

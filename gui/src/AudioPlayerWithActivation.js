@@ -134,7 +134,7 @@ const AudioPlayer = ({ audioFile, activations }) => {
   };
 
   return (
-    <div className="mb-4 border rounded border-2">
+    <div className="mb-4 border rounded border-2 ">
       {/* Container for both waveform and spectrogram to overlay them */}
       <div style={{ position: 'relative', height: '100px' }} alt={audioFile}>
         {/* Waveform container */}
@@ -230,7 +230,7 @@ const AudioPlayerWithActivation = () => {
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto p-4">
+    <div className="w-full max-w-3xl mx-auto px-4">
       {error && <p className="text-red-500">{error}</p>}
       <form onSubmit={handleSubmit} className="mb-4">
         <div className="mb-2">
