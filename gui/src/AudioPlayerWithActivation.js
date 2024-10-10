@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugin/wavesurfer.regions.min.js';
+import SpectrogramPlugin from 'wavesurfer.js/dist/plugin/wavesurfer.spectrogram.min.js';
 
 const API_BASE_URL = 'http://localhost:5555';  // Replace with your actual IP address
 
 const AudioPlayer = ({ audioFile, activations }) => {
   const waveformRef = useRef(null);
+  const spectrogramRef = useRef(null);
   const wavesurferRef = useRef(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -24,7 +26,15 @@ const AudioPlayer = ({ audioFile, activations }) => {
       cursorColor: 'navy',
       height: 100,
       responsive: true,
-      plugins: [RegionsPlugin.create()]
+      plugins: [
+        RegionsPlugin.create(),
+        SpectrogramPlugin.create({
+          wavesurfer: wavesurferRef.current,
+          container: spectrogramRef.current,
+          labels: true,
+          height: 100,
+        })
+      ]
     });
 
     wavesurferRef.current.on('ready', () => {
@@ -107,6 +117,7 @@ const AudioPlayer = ({ audioFile, activations }) => {
   return (
     <div className="mb-4">
       <div ref={waveformRef} />
+      <div ref={spectrogramRef} />
       <div className="flex items-center mt-2">
         <button onClick={togglePlayPause} className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 mr-4">
           {isPlaying ? 'Pause' : 'Play'}
@@ -122,7 +133,6 @@ const AudioPlayer = ({ audioFile, activations }) => {
     </div>
   );
 };
-
 
 const AudioPlayerWithActivation = () => {
   const [neuronIdx, setNeuronIdx] = useState('');
