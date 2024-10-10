@@ -132,7 +132,7 @@ const AudioPlayer = ({ audioFile, activations }) => {
   return (
     <div className="mb-4">
       {/* Container for both waveform and spectrogram to overlay them */}
-      <div style={{ position: 'relative', height: '100px' }}>
+      <div style={{ position: 'relative', height: '100px' }} alt={audioFile}>
         {/* Waveform container */}
         <div ref={waveformRef} style={{ position: 'absolute', width: '100%', height: '100%' }} />
         {/* Spectrogram container overlaying the waveform */}
@@ -148,7 +148,6 @@ const AudioPlayer = ({ audioFile, activations }) => {
         <span className="text-sm font-mono" style={{ color: currentActivation >= 0 ? 'green' : 'red' }}>
           Activation: {currentActivation.toFixed(4)}
         </span>
-        <span className="ml-4">{audioFile}</span>
       </div>
     </div>
   );
