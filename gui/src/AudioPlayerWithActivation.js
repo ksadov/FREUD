@@ -161,6 +161,7 @@ const AudioPlayerWithActivation = () => {
   const [neuronIdx, setNeuronIdx] = useState('');
   const [maxVal, setMaxVal] = useState('');
   const [minVal, setMinVal] = useState('');
+  const [useAbs, setUseAbs] = useState(false);
   const [topFiles, setTopFiles] = useState([]);
   const [activations, setActivations] = useState([]);
   const [isServerReady, setIsServerReady] = useState(false);
@@ -193,6 +194,10 @@ const AudioPlayerWithActivation = () => {
 
   const handleMinValChange = (event) => {
     setMinVal(event.target.value);
+  };
+
+  const handleAbsChange = (event) => {
+    setUseAbs(event.target.checked);
   };
 
   const handleSubmit = (event) => {
@@ -229,6 +234,9 @@ const AudioPlayerWithActivation = () => {
         setIsLoading(false);
         return;
       }
+    }
+    if (useAbs) {
+      url += '&absolute_magnitude=true';
     }
     fetch(url)
       .then(response => response.json())
@@ -281,6 +289,16 @@ const AudioPlayerWithActivation = () => {
             onChange={handleMinValChange}
             className="px-2 py-1 border rounded"
             step="any"
+            disabled={isLoading || !isServerReady || !!error}
+          />
+        </div>
+        <div className="mb-2">
+          <label htmlFor="useAbs" className="mx-2">Use Absolute Value:</label>
+          <input
+            id="useAbs"
+            type="checkbox"
+            checked={useAbs}
+            onChange={handleAbsChange}
             disabled={isLoading || !isServerReady || !!error}
           />
         </div>
