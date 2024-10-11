@@ -160,6 +160,7 @@ const AudioPlayer = ({ audioFile, activations }) => {
 const AudioPlayerWithActivation = () => {
   const [neuronIdx, setNeuronIdx] = useState('');
   const [maxVal, setMaxVal] = useState('');
+  const [minVal, setMinVal] = useState('');
   const [topFiles, setTopFiles] = useState([]);
   const [activations, setActivations] = useState([]);
   const [isServerReady, setIsServerReady] = useState(false);
@@ -190,6 +191,10 @@ const AudioPlayerWithActivation = () => {
     setMaxVal(event.target.value);
   };
 
+  const handleMinValChange = (event) => {
+    setMinVal(event.target.value);
+  };
+
   const handleSubmit = (event) => {
     event.preventDefault();
     if (neuronIdx !== '') {
@@ -211,6 +216,16 @@ const AudioPlayerWithActivation = () => {
         url += `&max_val=${maxValFloat}`;
       } else {
         setError('Please enter a valid number for max value');
+        setIsLoading(false);
+        return;
+      }
+    }
+    if (minVal !== '') {
+      const minValFloat = parseFloat(minVal);
+      if (!isNaN(minValFloat)) {
+        url += `&min_val=${minValFloat}`;
+      } else {
+        setError('Please enter a valid number for min value');
         setIsLoading(false);
         return;
       }
@@ -252,6 +267,18 @@ const AudioPlayerWithActivation = () => {
             type="number"
             value={maxVal}
             onChange={handleMaxValChange}
+            className="px-2 py-1 border rounded"
+            step="any"
+            disabled={isLoading || !isServerReady || !!error}
+          />
+        </div>
+        <div className="mb-2">
+          <label htmlFor="minVal" className="mx-2">Min Activation Value (optional):</label>
+          <input
+            id="minVal"
+            type="number"
+            value={minVal}
+            onChange={handleMinValChange}
             className="px-2 py-1 border rounded"
             step="any"
             disabled={isLoading || !isServerReady || !!error}
