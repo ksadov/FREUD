@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import Button from 'react-bootstrap/Button';
 import AudioPlayerWithActivation from './AudioPlayerWithActivation';
+import Plot from 'react-plotly.js';
 
 const API_BASE_URL = 'http://localhost:5555';  // Replace with your actual IP address
 
@@ -11,6 +12,7 @@ const ActivationDisplay = () => {
   const [useAbs, setUseAbs] = useState(false);
   const [topFiles, setTopFiles] = useState([]);
   const [activations, setActivations] = useState([]);
+  const [maxPerFile, setMaxPerFile] = useState([]);
   const [isServerReady, setIsServerReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -94,6 +96,7 @@ const ActivationDisplay = () => {
       .then(data => {
         setTopFiles(data.top_files);
         setActivations(data.activations);
+        setMaxPerFile(data.max_per_file);
         setIsLoading(false);
       })
       .catch(error => {
@@ -165,6 +168,26 @@ const ActivationDisplay = () => {
       </form>
       {isLoading && <p>Loading...</p>}
       {!isServerReady && <p>Waiting for server...</p>}
+      {maxPerFile.length > 0 && (
+        <Plot
+          data={[
+            {
+              x: maxPerFile,
+              type: 'histogram',
+              marker: {
+                color: 'rgba(0,0,255,0.7)',
+              },
+            },
+          ]}
+          layout={{
+            width: 720,
+            height: 480,
+            title: 'Histogram of Max Activation Values per File',
+            xaxis: { title: 'Max Activation Value' },
+            yaxis: { title: 'Count', type: 'log', autorange: true },
+          }}
+        />
+      )}
       {topFiles.map((file, index) => (
         <AudioPlayerWithActivation key={`${file}-${index}`} audioFile={file} apiBaseUrl={API_BASE_URL} activations={activations[index] || []} />
       ))}
