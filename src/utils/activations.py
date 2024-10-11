@@ -56,26 +56,3 @@ def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivation
                 pq = pq[:n_files]
     print("Search complete.")
     return pq
-
-def make_top_fn(config: dict, from_disk: bool, files_to_search: Optional[int]) -> callable:
-    if from_disk:
-        dataloader = MemoryMappedActivationDataLoader(
-            config['out_folder'],
-            config['layer_name'],
-            config['batch_size'],
-            dl_max_workers=config['dl_max_workers'],
-            subset_size=files_to_search
-        )
-    else:
-        dataloader = FlyActivationDataLoader(
-            config['data_path'],
-            config['whisper_model'],
-            config['sae_model'],
-            config['layer_name'],
-            config['device'],
-            config['batch_size'],
-            dl_max_workers=config['dl_max_workers'],
-            subset_size=files_to_search
-        )
-    return lambda neuron_idx, n_files, max_val, min_val, absolute_magnitude: top_activations(dataloader, neuron_idx, 
-                                                                                             n_files, max_val, min_val, absolute_magnitude)

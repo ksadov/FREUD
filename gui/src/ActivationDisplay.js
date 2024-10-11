@@ -14,6 +14,8 @@ const ActivationDisplay = () => {
   const [isServerReady, setIsServerReady] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [layerName, setLayerName] = useState('');
+  const [nFeatures, setNFeatures] = useState(0);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/status`)
@@ -21,6 +23,8 @@ const ActivationDisplay = () => {
       .then(data => {
         if (data.status === "Initialization complete") {
           setIsServerReady(true);
+          setLayerName(data.layer_name);
+          setNFeatures(data.n_features);
         } else {
           setError('Server not ready');
         }
@@ -51,10 +55,10 @@ const ActivationDisplay = () => {
     event.preventDefault();
     if (neuronIdx !== '') {
       const idx = parseInt(neuronIdx, 10);
-      if (!isNaN(idx) && idx >= 0) {
+      if (!isNaN(idx) && idx >= 0 && idx < nFeatures) {
         fetchTopFiles(idx);
       } else {
-        setError('Please enter a valid non-negative integer for neuron index');
+        setError(`Please enter a valid neuron index between 0 and ${nFeatures - 1}`);
       }
     }
   };
@@ -101,6 +105,7 @@ const ActivationDisplay = () => {
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4">
+      <h1 className="text-2xl font-bold mb-4">{layerName}</h1>
       {error && <p className="text-red-500">{error}</p>}
       <form onSubmit={handleSubmit} className="mb-4">
         <div className="mb-2">
@@ -112,6 +117,7 @@ const ActivationDisplay = () => {
             onChange={handleNeuronChange}
             className="px-2 py-1 border rounded"
             min="0"
+            max={nFeatures - 1}
             disabled={isLoading || !isServerReady || !!error}
           />
         </div>
