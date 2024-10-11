@@ -16,7 +16,8 @@ def trim_activation(audio_fname: str, activation: torch.Tensor) -> torch.Tensor:
 
 def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivationDataLoader, neuron_idx: int, 
                     n_files: int, max_val: Optional[float], min_val: Optional[float], 
-                    absolute_magnitude: bool) -> list:
+                    absolute_magnitude: bool, return_max_per_file: bool) -> \
+                        tuple[list[tuple[str, torch.Tensor, float, float]], list[float], Optional[list[float]]]:
     """
     Given an activation dataloader, return the n files that activate a given neuron the most within an optional range of values.
 
@@ -26,9 +27,12 @@ def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivation
     :param max_val: maximum activation value to consider, or None
     :param min_val: minimum activation value to consider, or None
     :param absolute_magnitude: search for the top n files with the highest absolute magnitude activations
+    :param return_all_maxes: return a list of the max activation for each file
+    :return: list of tuples (audio_file, trimmed_activation, max_activation_value, max_activation_time) and optionally a list of max activations
     """
     print("Searching activations...")
     pq = []
+    max_per_file = []
     for act_batch, audio_files in tqdm(dataloader):
         for act, audio_file in zip(act_batch, audio_files):
             act = act[:, neuron_idx]
@@ -44,9 +48,13 @@ def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivation
                 signed_max_activation_value = trimmed_activation[max_activation_index].item()
                 allow_activation = filter_activation(signed_max_activation_value)
                 max_activation_value = abs(signed_max_activation_value)
+                if return_max_per_file:
+                    max_per_file.append(signed_max_activation_value)
             else:
                 max_activation_value = trimmed_activation.max().item()
                 allow_activation = filter_activation(max_activation_value)
+                if return_max_per_file:
+                    max_per_file.append(max_activation_value)
             if allow_activation:
                 max_activation_loc = trimmed_activation.argmax().item()
                 max_activation_time = max_activation_loc * TIMESTEP_S
@@ -54,4 +62,4 @@ def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivation
                 pq.sort(key=lambda x: x[2], reverse=True)
                 pq = pq[:n_files]
     print("Search complete.")
-    return pq
+    return pq, None if not return_max_per_file else max_per_file
