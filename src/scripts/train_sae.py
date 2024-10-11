@@ -25,6 +25,7 @@ import time
 
 N_TRANSCRIPTS = 4
 
+
 def init_dataloader(from_disk: bool, data_path: str, whisper_model: str, sae_checkpoint: str, layer_name: str,
                     device: torch.device, batch_size: int, dl_max_workers: int, subset_size: Optional[int]):
     if from_disk:
@@ -51,6 +52,7 @@ def init_dataloader(from_disk: bool, data_path: str, whisper_model: str, sae_che
     dset_len = loader.dataset_length
     return loader, feat_dim, activation_dims, dset_len
 
+
 def validate(
     model: torch.nn.Module,
     recon_loss_fn: torch.nn.Module,
@@ -76,7 +78,8 @@ def validate(
     base_transcripts = []
     base_filenames = []
 
-    val_loader, _, _, _ = init_dataloader(from_disk, val_folder, whisper_model_name, None, layer_name, device, 1, 1, None)
+    val_loader, _, _, _ = init_dataloader(
+        from_disk, val_folder, whisper_model_name, None, layer_name, device, 1, 1, None)
     encoded_magnitude_values = torch.zeros(
         (len(val_loader), model.n_dict_components)).to(device)
     context_manager = autocast(device_type=str(
@@ -220,7 +223,8 @@ def train(seed: int,
           from_disk: bool,
           ):
     set_seeds(seed)
-    train_loader, feat_dim, activation_dims, dset_len = init_dataloader(from_disk, train_folder, whisper_model, None, layer_name, device, batch_size, dl_max_workers, None)
+    train_loader, feat_dim, activation_dims, dset_len = init_dataloader(
+        from_disk, train_folder, whisper_model, None, layer_name, device, batch_size, dl_max_workers, None)
     train_loader = iter(train_loader)
 
     hparam_dict = {
@@ -235,6 +239,8 @@ def train(seed: int,
         "layer_name": layer_name,
         "whisper_model": whisper_model,
         "activation_size": feat_dim,
+        "train_folder": train_folder,
+        "val_folder": val_folder,
     }
 
     # train_dataset = TokenEmbeddingDataset()
@@ -301,7 +307,8 @@ def train(seed: int,
                     activations, _ = next(train_loader)
                     activations = activations.to(device)
                 except StopIteration:
-                    loader, _, _, _ = init_dataloader(from_disk, train_folder, whisper_model, None, layer_name, device, batch_size, dl_max_workers, None)
+                    loader, _, _, _ = init_dataloader(
+                        from_disk, train_folder, whisper_model, None, layer_name, device, batch_size, dl_max_workers, None)
                     train_loader = iter(loader)
                     activations, filenames = next(train_loader)
                     activations = activations.to(device)
@@ -342,7 +349,7 @@ def train(seed: int,
             meta["loss_recon"] = sum(losses_recon) / grad_acc_steps
             meta["loss_l1"] = sum(losses_l1) / grad_acc_steps
             meta["time_backward"] = backward_time
-            
+
             # log training losses
             if state["step"] % log_tb_every == 0:
                 tb_logger.add_scalar("train/loss", loss, state["step"])
@@ -407,7 +414,6 @@ def train(seed: int,
                     # Save PyTorch model for PR area calculation
                     pytorch_model_path = model_out[:-3] + ".bestval"
                     torch.save(model, pytorch_model_path)
-            
 
             if steps != -1 and state["step"] >= steps:
                 pbar.close()
@@ -421,7 +427,8 @@ def train(seed: int,
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, required=True, help="Path to train configuration file")
+    parser.add_argument("--config", type=str, required=True,
+                        help="Path to train configuration file")
     args = parser.parse_args()
     # load config json
     with open(args.config, "r") as f:
