@@ -18,13 +18,12 @@ def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivation
                     n_files: int, max_val: Optional[float], min_val: Optional[float], 
                     absolute_magnitude: bool) -> list:
     """
-    Given an activation dataloader, return the n files that activate a given neuron the most, 
-    or the top n files under a given maximum activation value
+    Given an activation dataloader, return the n files that activate a given neuron the most within an optional range of values.
 
     :param dataloader: MemoryMappedActivationDataLoader | FlyActivationDataLoader
     :param neuron_idx: index of the neuron to search for
     :param n_files: number of files to return
-    :param max_val: maximum activation value to consider, or None to find the files with the highest activations
+    :param max_val: maximum activation value to consider, or None
     :param min_val: minimum activation value to consider, or None
     :param absolute_magnitude: search for the top n files with the highest absolute magnitude activations
     """
