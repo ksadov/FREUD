@@ -16,9 +16,11 @@ top_fn = None
 def get_top_activations(top_fn: callable,
                         neuron_idx: int,
                         n_files: int,
-                        max_val: Optional[float] = None
+                        max_val: Optional[float],
+                        min_val: Optional[float],
+                        absolute_magnitude: bool
                         ) -> tuple[list[str], list[torch.Tensor]]:
-    top = top_fn(neuron_idx, n_files, max_val)
+    top = top_fn(neuron_idx, n_files, max_val, min_val, absolute_magnitude)
     top_files = [x[0] for x in top]
     activations = [x[1] for x in top]
     print("Got top activations.")
@@ -45,8 +47,11 @@ def get_top_files():
     neuron_idx = int(request.args.get('neuron_idx', 0))
     n_files = int(request.args.get('n_files', 10))
     max_val_arg = request.args.get('max_val', None)
+    min_val_arg = request.args.get('min_val', None)
+    absolute_magnitude = request.args.get('absolute_magnitude', False)
     max_val = float(max_val_arg) if max_val_arg is not None else None
-    top_files, activations = get_top_activations(top_fn, neuron_idx, n_files, max_val)
+    min_val = float(min_val_arg) if min_val_arg is not None else None
+    top_files, activations = get_top_activations(top_fn, neuron_idx, n_files, max_val, min_val, absolute_magnitude)
     activations = [x.tolist() for x in activations]
     return jsonify({"top_files": top_files, "activations": activations})
 

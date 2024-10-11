@@ -1,4 +1,3 @@
-import os
 from typing import Optional
 import torch
 import torchaudio
@@ -15,7 +14,9 @@ def trim_activation(audio_fname: str, activation: torch.Tensor) -> torch.Tensor:
     return activation[:n_frames]
 
 
-def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivationDataLoader, neuron_idx: int, n_files: int, max_val: Optional[float]) -> list:
+def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivationDataLoader, neuron_idx: int, 
+                    n_files: int, max_val: Optional[float], min_val: Optional[float], 
+                    absolute_magnitude: bool) -> list:
     """
     Given an activation dataloader, return the n files that activate a given neuron the most, 
     or the top n files under a given maximum activation value
@@ -24,6 +25,8 @@ def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivation
     :param neuron_idx: index of the neuron to search for
     :param n_files: number of files to return
     :param max_val: maximum activation value to consider, or None to find the files with the highest activations
+    :param min_val: minimum activation value to consider, or None
+    :param absolute_magnitude: search for the top n files with the highest absolute magnitude activations
     """
     print("Searching activations...")
     pq = []
@@ -31,8 +34,21 @@ def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivation
         for act, audio_file in zip(act_batch, audio_files):
             act = act[:, neuron_idx]
             trimmed_activation = trim_activation(audio_file, act)
-            max_activation_value = trimmed_activation.max().item()
-            if max_val is None or max_activation_value < max_val:
+            def filter_activation(max_activation_value: torch.Tensor) -> bool:
+                if max_val is not None and max_activation_value > max_val:
+                    return False
+                if min_val is not None and max_activation_value < min_val:
+                    return False
+                return True
+            if absolute_magnitude:
+                max_activation_index = torch.argmax(torch.abs(trimmed_activation))
+                signed_max_activation_value = trimmed_activation[max_activation_index].item()
+                allow_activation = filter_activation(signed_max_activation_value)
+                max_activation_value = abs(signed_max_activation_value)
+            else:
+                max_activation_value = trimmed_activation.max().item()
+                allow_activation = filter_activation(max_activation_value)
+            if allow_activation:
                 max_activation_loc = trimmed_activation.argmax().item()
                 max_activation_time = max_activation_loc * TIMESTEP_S
                 pq.append((audio_file, trimmed_activation, max_activation_value, max_activation_time))
@@ -61,15 +77,5 @@ def make_top_fn(config: dict, from_disk: bool, files_to_search: Optional[int]) -
             dl_max_workers=config['dl_max_workers'],
             subset_size=files_to_search
         )
-    return lambda neuron_idx, n_files, max_val: top_activations(dataloader, neuron_idx, n_files, max_val)
-        
-def get_top_activations(top_fn: callable,
-                        neuron_idx: int,
-                        n_files: int,
-                        max_val: Optional[float] = None
-                        ) -> tuple[list[str], list[torch.Tensor]]:
-    top = top_fn(neuron_idx, n_files, max_val)
-    top_files = [x[0] for x in top]
-    activations = [x[1] for x in top]
-    print("Got top activations.")
-    return top_files, activations
+    return lambda neuron_idx, n_files, max_val, min_val, absolute_magnitude: top_activations(dataloader, neuron_idx, 
+                                                                                             n_files, max_val, min_val, absolute_magnitude)
