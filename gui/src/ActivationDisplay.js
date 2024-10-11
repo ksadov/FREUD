@@ -108,7 +108,7 @@ const ActivationDisplay = () => {
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4">
-      <h1 className="text-2xl font-bold mb-4">{layerName}</h1>
+      <h1 className="text-2xl font-bold m-4">{layerName}</h1>
       {error && <p className="text-red-500">{error}</p>}
       <form onSubmit={handleSubmit} className="mb-4">
         <div className="mb-2">
