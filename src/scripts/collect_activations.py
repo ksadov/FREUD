@@ -10,7 +10,7 @@ from npy_append_array import NpyAppendArray
 from src.dataset.activations import FlyActivationDataLoader
 
 
-def save_activations_for_memory_mapping(metadata_file: Path, tensor_file: Path, activations: torch.tensor, 
+def save_activations_for_memory_mapping(metadata_file: Path, tensor_file: Path, activations: torch.tensor,
                                         filenames: list[str]):
     """
     Append activations to a memory-mappable file and update metadata
@@ -21,29 +21,32 @@ def save_activations_for_memory_mapping(metadata_file: Path, tensor_file: Path, 
     :param filenames: List of filenames corresponding to the activations
     :requires: len(activations) == len(filenames)
     """
-    assert len(activations) == len(filenames), "Number of activations and filenames must match"
+    assert len(activations) == len(
+        filenames), "Number of activations and filenames must match"
     # Load existing metadata if it exists
     if os.path.exists(metadata_file):
         with open(metadata_file, 'r') as f:
             metadata = json.load(f)
     else:
         metadata = {'filenames': [], 'tensor_shapes': []}
-    
+
     # Prepare new data and update metadata
     new_tensors = []
     for filename, tensor in zip(filenames, activations):
         metadata['filenames'].append(filename)
         metadata['tensor_shapes'].append(list(tensor.shape))
         new_tensors.append(tensor.cpu().numpy())
-    
+
     # Save updated metadata
     with open(metadata_file, 'w') as f:
         json.dump(metadata, f)
-    
+
     # Append tensor data to the file using NpyAppendArray
     with NpyAppendArray(tensor_file) as npaa:
         for tensor in new_tensors:
-            npaa.append(tensor.reshape(1, -1))  # Reshape to 2D array for appending
+            # Reshape to 2D array for appending
+            npaa.append(tensor.reshape(1, -1))
+
 
 def get_activations(
     data_path: str,
@@ -89,11 +92,14 @@ def get_activations(
     with torch.no_grad():
         for batch in tqdm(dataloader):
             activations, global_filenames = batch
-            save_activations_for_memory_mapping(metadata_file, tensor_file, activations, global_filenames)
+            save_activations_for_memory_mapping(
+                metadata_file, tensor_file, activations, global_filenames)
+
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, help="Path to feature configuration file")
+    parser.add_argument("--config", type=str,
+                        help="Path to feature configuration file")
     args = parser.parse_args()
     with open(args.config, "r") as f:
         config = json.load(f)
@@ -104,11 +110,12 @@ def main():
             config["whisper_model"],
             config["sae_model"],
             config["batch_size"],
-            torch.device(config["device"]),
+            config["device"],
             config["out_folder"],
             config["dl_max_workers"],
             config.get("collect_max", None)
         )
+
 
 if __name__ == "__main__":
     main()
