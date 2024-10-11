@@ -7,5 +7,5 @@
   "device": "cpu",
   "out_folder": "activations/mmap_ls_block_2",
   "dl_max_workers": 0,
-  "collect_max": 50
+  "collect_max": 500
 }
