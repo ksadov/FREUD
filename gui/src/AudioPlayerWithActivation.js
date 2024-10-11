@@ -6,9 +6,7 @@ import CursorPlugin from 'wavesurfer.js/src/plugin/cursor';
 import Button from 'react-bootstrap/Button';
 import { IoMdPlay, IoMdPause } from "react-icons/io";
 
-const API_BASE_URL = 'http://localhost:5555';  // Replace with your actual IP address
-
-const AudioPlayer = ({ audioFile, activations }) => {
+const AudioPlayerWithActivation = ({ audioFile, activations, apiBaseUrl }) => {
   const waveformRef = useRef(null);
   const spectrogramRef = useRef(null);
   const wavesurferRef = useRef(null);
@@ -107,7 +105,7 @@ const AudioPlayer = ({ audioFile, activations }) => {
 
   useEffect(() => {
     if (wavesurferRef.current) {
-      wavesurferRef.current.load(`${API_BASE_URL}/audio/${encodeURIComponent(audioFile)}`);
+      wavesurferRef.current.load(`${apiBaseUrl}/audio/${encodeURIComponent(audioFile)}`);
     }
   }, [audioFile]);
 
@@ -154,168 +152,6 @@ const AudioPlayer = ({ audioFile, activations }) => {
         </span>
       </div>
     </div >
-  );
-};
-
-const AudioPlayerWithActivation = () => {
-  const [neuronIdx, setNeuronIdx] = useState('');
-  const [maxVal, setMaxVal] = useState('');
-  const [minVal, setMinVal] = useState('');
-  const [useAbs, setUseAbs] = useState(false);
-  const [topFiles, setTopFiles] = useState([]);
-  const [activations, setActivations] = useState([]);
-  const [isServerReady, setIsServerReady] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/status`)
-      .then(response => response.json())
-      .then(data => {
-        if (data.status === "Initialization complete") {
-          setIsServerReady(true);
-        } else {
-          setError('Server not ready');
-        }
-      })
-      .catch(error => {
-        console.error('Error checking server status:', error);
-        setError('Failed to connect to server');
-      });
-  }, []);
-
-  const handleNeuronChange = (event) => {
-    setNeuronIdx(event.target.value);
-  };
-
-  const handleMaxValChange = (event) => {
-    setMaxVal(event.target.value);
-  };
-
-  const handleMinValChange = (event) => {
-    setMinVal(event.target.value);
-  };
-
-  const handleAbsChange = (event) => {
-    setUseAbs(event.target.checked);
-  };
-
-  const handleSubmit = (event) => {
-    event.preventDefault();
-    if (neuronIdx !== '') {
-      const idx = parseInt(neuronIdx, 10);
-      if (!isNaN(idx) && idx >= 0) {
-        fetchTopFiles(idx);
-      } else {
-        setError('Please enter a valid non-negative integer for neuron index');
-      }
-    }
-  };
-
-  const fetchTopFiles = (idx) => {
-    setIsLoading(true);
-    let url = `${API_BASE_URL}/top_files?neuron_idx=${idx}&n_files=20`;
-    if (maxVal !== '') {
-      const maxValFloat = parseFloat(maxVal);
-      if (!isNaN(maxValFloat)) {
-        url += `&max_val=${maxValFloat}`;
-      } else {
-        setError('Please enter a valid number for max value');
-        setIsLoading(false);
-        return;
-      }
-    }
-    if (minVal !== '') {
-      const minValFloat = parseFloat(minVal);
-      if (!isNaN(minValFloat)) {
-        url += `&min_val=${minValFloat}`;
-      } else {
-        setError('Please enter a valid number for min value');
-        setIsLoading(false);
-        return;
-      }
-    }
-    if (useAbs) {
-      url += '&absolute_magnitude=true';
-    }
-    fetch(url)
-      .then(response => response.json())
-      .then(data => {
-        setTopFiles(data.top_files);
-        setActivations(data.activations);
-        setIsLoading(false);
-      })
-      .catch(error => {
-        console.error('Error fetching top files:', error);
-        setError('Failed to fetch top files');
-        setIsLoading(false);
-      });
-  };
-
-  return (
-    <div className="w-full max-w-3xl mx-auto px-4">
-      {error && <p className="text-red-500">{error}</p>}
-      <form onSubmit={handleSubmit} className="mb-4">
-        <div className="mb-2">
-          <label htmlFor="neuronIdx" className="mx-2">Neuron Index:</label>
-          <input
-            id="neuronIdx"
-            type="number"
-            value={neuronIdx}
-            onChange={handleNeuronChange}
-            className="px-2 py-1 border rounded"
-            min="0"
-            disabled={isLoading || !isServerReady || !!error}
-          />
-        </div>
-        <div className="mb-2">
-          <label htmlFor="maxVal" className="mx-2">Max Activation Value (optional):</label>
-          <input
-            id="maxVal"
-            type="number"
-            value={maxVal}
-            onChange={handleMaxValChange}
-            className="px-2 py-1 border rounded"
-            step="any"
-            disabled={isLoading || !isServerReady || !!error}
-          />
-        </div>
-        <div className="mb-2">
-          <label htmlFor="minVal" className="mx-2">Min Activation Value (optional):</label>
-          <input
-            id="minVal"
-            type="number"
-            value={minVal}
-            onChange={handleMinValChange}
-            className="px-2 py-1 border rounded"
-            step="any"
-            disabled={isLoading || !isServerReady || !!error}
-          />
-        </div>
-        <div className="mb-2">
-          <label htmlFor="useAbs" className="mx-2">Use Absolute Value:</label>
-          <input
-            id="useAbs"
-            type="checkbox"
-            checked={useAbs}
-            onChange={handleAbsChange}
-            disabled={isLoading || !isServerReady || !!error}
-          />
-        </div>
-        <Button
-          type="submit"
-          className="px-4 py-2"
-          disabled={isLoading || !isServerReady || !!error}
-        >
-          Update
-        </Button>
-      </form>
-      {isLoading && <p>Loading...</p>}
-      {!isServerReady && <p>Waiting for server...</p>}
-      {topFiles.map((file, index) => (
-        <AudioPlayer key={`${file}-${index}`} audioFile={file} activations={activations[index] || []} />
-      ))}
-    </div>
   );
 };
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import AudioPlayerWithActivation from './AudioPlayerWithActivation';
+import ActivationDisplay from './ActivationDisplay';
 
 function App() {
   return (
@@ -7,7 +7,7 @@ function App() {
       <h1 className="p-4">
         Whisper Interpretability
       </h1>
-      <AudioPlayerWithActivation />
+      <ActivationDisplay />
     </div>
   );
 }
