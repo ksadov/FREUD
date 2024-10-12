@@ -10,6 +10,7 @@ from src.models.hooked_model import WhisperSubbedActivation
 import numpy as np
 import random
 import os
+from src.models.config import L1AutoEncoderConfig, TopKAutoEncoderConfig
 from src.models.l1autoencoder import L1AutoEncoder, L1ForwardOutput
 from src.models.topkautoencoder import TopKAutoEncoder, TopKForwardOutput
 from pathlib import Path
@@ -78,7 +79,7 @@ def validate(
     val_loader, _, _ = init_dataloader(
         from_disk, val_folder, whisper_model_name, None, layer_name, device, 1, 1, None)
     mag_vals_dim = model.n_dict_components if isinstance(
-        model, L1AutoEncoder) else model.topk_params["k"]
+        model, L1AutoEncoder) else model.cfg.k
     encoded_magnitude_values = torch.zeros(
         (len(val_loader), mag_vals_dim)).to(device)
     context_manager = autocast(device_type=str(
@@ -208,7 +209,6 @@ def train(seed: int,
           train_folder: str,
           val_folder: str,
           device: torch.device,
-          n_dict_components: int,
           run_dir: str,
           lr: float,
           weight_decay: float,
@@ -219,39 +219,39 @@ def train(seed: int,
           log_tb_every: int,
           save_every: int,
           val_every: int,
-          checkpoint: str,
-          recon_alpha: float,
-          layer_name: str,
-          whisper_model: str,
+          start_checkpoint: str,
+          whisper_config: dict,
           from_disk: bool,
           autoencoder_variant: str,
-          topk_params: Optional[dict]
+          autoencoder_config: dict
           ):
     set_seeds(seed)
     train_loader, feat_dim, dset_len = init_dataloader(
-        from_disk, train_folder, whisper_model, None, layer_name, device, batch_size, dl_max_workers, None)
+        from_disk, train_folder, whisper_config['model'], None, whisper_config['layer_name'], device, batch_size,
+        dl_max_workers, None)
 
     hparam_dict = {
         "autoencoder_variant": autoencoder_variant,
+        "autoencoder_config": autoencoder_config,
         "lr": lr,
         "weight_decay": weight_decay,
         "steps": steps,
         "clip_thresh": clip_thresh,
         "batch_size": batch_size,
-        "recon_alpha": recon_alpha,
-        "n_dict_components": n_dict_components,
-        "layer_name": layer_name,
-        "whisper_model": whisper_model,
+        "whisper_config": whisper_config,
         "activation_size": feat_dim,
         "train_folder": train_folder,
         "val_folder": val_folder,
-        "topk_params": topk_params
     }
     assert autoencoder_variant in ["l1", "topk"], \
         f"Invalid autoencoder variant: {autoencoder_variant}, must be 'l1' or 'topk'"
-    model = L1AutoEncoder(hparam_dict).to(
-        device) if autoencoder_variant == "l1" else TopKAutoEncoder(hparam_dict).to(device)
-    dist_model = model
+    if autoencoder_variant == "l1":
+        cfg = L1AutoEncoderConfig.from_dict(autoencoder_config)
+        model = L1AutoEncoder(activation_size=feat_dim, cfg=cfg)
+    else:
+        cfg = TopKAutoEncoderConfig.from_dict(autoencoder_config)
+        model = TopKAutoEncoder(activation_size=feat_dim, cfg=cfg)
+    dist_model = model.to(device)
 
     os.makedirs(run_dir, exist_ok=True)
     checkpoint_out_dir = run_dir + "/checkpoints"
@@ -281,9 +281,9 @@ def train(seed: int,
     meta["effective_batch_size"] = batch_size
     meta["model_params"] = sum(x.numel() for x in dist_model.parameters())
 
-    if checkpoint:
-        print(f"Checkpoint: {checkpoint}")
-        load_checkpoint(state, checkpoint, device=device)
+    if start_checkpoint is not None:
+        print(f"Checkpoint: {start_checkpoint}")
+        load_checkpoint(state, start_checkpoint, device=device)
 
     while state["step"] < steps:
         model.train()
@@ -348,8 +348,8 @@ def train(seed: int,
                 print("Validating...")
                 losses_dict, subbed_transcripts, base_transcripts, base_filenames, \
                     encoded_mag_means, encoded_mag_stds = validate(
-                        model, val_folder, device, layer_name,
-                        whisper_model, not logged_base_transcripts, from_disk
+                        model, val_folder, device, whisper_config['layer_name'], whisper_config['model'],
+                        not logged_base_transcripts, from_disk
                     )
                 logged_base_transcripts = True
                 if isinstance(model, L1AutoEncoder):

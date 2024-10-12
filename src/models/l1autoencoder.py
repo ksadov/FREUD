@@ -5,6 +5,7 @@ from jaxtyping import Float
 from torch import Tensor, nn
 
 from src.models.hooked_model import WhisperActivationCache, activations_from_audio
+from src.models.config import L1AutoEncoderConfig
 
 # modified from
 # https://github.com/er537/whisper_interpretability/tree/master/whisper_interpretability/sparse_coding/train/autoencoder.py
@@ -35,21 +36,18 @@ def mse_loss(input, target, ignored_index, reduction):
 
 
 class L1AutoEncoder(nn.Module):
-    def __init__(self, hp: dict):
+    def __init__(self, activation_size: int, cfg: L1AutoEncoderConfig):
         """
         Autoencoder model for audio features
 
-        :param hp: dictionary containing hyperparameters
-        :requires: hp must contain the following keys:
-            - activation_size: size of the activation layer
-            - n_dict_components: number of dictionary components
+        :param cfg: model configuration
         """
         super(L1AutoEncoder, self).__init__()
-        self.hp = hp
+        self.cfg = cfg
         self.tied = True  # tie encoder and decoder weights
-        self.activation_size = hp['activation_size']
-        self.n_dict_components = hp['n_dict_components']
-        self.recon_alpha = hp['recon_alpha']
+        self.activation_size = activation_size
+        self.n_dict_components = cfg.n_dict_components
+        self.recon_alpha = cfg.recon_alpha
 
         # Only defining the decoder layer, encoder will share its weights
         self.decoder = nn.Linear(
@@ -82,7 +80,9 @@ class L1AutoEncoder(nn.Module):
     def init_from_checkpoint(checkpoint: str):
         checkpoint = torch.load(checkpoint)
         hp = checkpoint['hparams']
-        model = L1AutoEncoder(hp)
+        model_config = L1AutoEncoderConfig(hp['autoencoder_config'])
+        activation_size = hp['activation_size']
+        model = L1AutoEncoder(activation_size, model_config)
         model.load_state_dict(checkpoint['model'])
         model.eval()
         return model

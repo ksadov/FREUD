@@ -4,6 +4,8 @@ import einops
 import torch
 from torch import Tensor, nn
 
+from src.models.config import TopKAutoEncoderConfig
+
 
 # modified from https://github.com/EleutherAI/sae/tree/main/sae/sae.py
 
@@ -40,7 +42,8 @@ class TopKForwardOutput(NamedTuple):
 class TopKAutoEncoder(nn.Module):
     def __init__(
         self,
-        hp: dict,
+        activation_size: int,
+        cfg: TopKAutoEncoderConfig,
         decoder: bool = True
     ):
         """
@@ -52,10 +55,10 @@ class TopKAutoEncoder(nn.Module):
             - n_dict_components: number of dictionary components
         """
         super().__init__()
-        self.hp = hp
-        self.d_in = hp['activation_size']
-        self.n_dict_components = hp['n_dict_components']
-        self.topk_params = hp['topk_params']
+        print("CFG!!!", cfg)
+        self.cfg = cfg
+        self.d_in = activation_size
+        self.n_dict_components = cfg.n_dict_components
 
         self.encoder = nn.Linear(
             self.d_in, self.n_dict_components)
@@ -63,7 +66,7 @@ class TopKAutoEncoder(nn.Module):
 
         self.W_dec = nn.Parameter(
             self.encoder.weight.data.clone()) if decoder else None
-        if decoder and self.topk_params['normalize_decoder']:
+        if decoder and self.cfg.normalize_decoder:
             self.set_decoder_norm_to_unit_norm()
 
         self.b_dec = nn.Parameter(torch.zeros(self.d_in))
@@ -77,7 +80,7 @@ class TopKAutoEncoder(nn.Module):
 
     def select_topk(self, latents: Tensor) -> TopKEncoderOutput:
         """Select the top-k latents."""
-        return TopKEncoderOutput(*latents.topk(self.topk_params['k'], sorted=False))
+        return TopKEncoderOutput(*latents.topk(self.cfg.k, sorted=False))
 
     def encode(self, x: Tensor) -> TopKEncoderOutput:
         """Encode the input and select the top-k latents."""
@@ -128,9 +131,9 @@ class TopKAutoEncoder(nn.Module):
         l2_loss = e.pow(2).sum()
         fvu = l2_loss / total_variance
 
-        if self.topk_params['multi_topk']:
+        if self.cfg.multi_topk:
             top_acts, top_indices = pre_acts.topk(
-                4 * self.topk_params['k'], sorted=False)
+                4 * self.cfg.k, sorted=False)
             sae_out = self.decode(top_acts, top_indices)
 
             multi_topk_fvu = (sae_out - x).pow(2).sum() / total_variance
@@ -141,7 +144,7 @@ class TopKAutoEncoder(nn.Module):
             sae_out,
             TopKEncoderOutput(top_acts, top_indices),
             fvu,
-            auxk_loss * self.topk_params['auxk_alpha'],
+            auxk_loss * self.cfg.auxk_alpha,
             multi_topk_fvu,
         )
 
@@ -173,7 +176,8 @@ class TopKAutoEncoder(nn.Module):
     def init_from_checkpoint(checkpoint: str):
         checkpoint = torch.load(checkpoint)
         hp = checkpoint['hparams']
-        model = TopKAutoEncoder(hp)
+        activation_size = checkpoint['activation_size']
+        model = TopKAutoEncoder(activation_size, hp)
         model.load_state_dict(checkpoint['model'])
         model.eval()
         return model

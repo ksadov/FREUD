@@ -1,13 +1,21 @@
 {
+  "whisper_config": {
+    "model": "tiny",
+    "layer_name": "encoder.blocks.2"
+  },
   "autoencoder_variant": "topk",
+  "autoencoder_config": {
+    "n_dict_components": 768,
+    "normalize_decoder": true,
+    "k": 32,
+    "multi_topk": false,
+    "auxk_alpha": 0.0
+  },
   "seed": 0,
-  "layer_name": "encoder.blocks.2",
-  "whisper_model": "tiny",
   "train_folder": "activations/replicate_block_2_train",
   "val_folder": "activations/replicate_block_2_dev",
   "device": "cuda",
-  "n_dict_components": 768,
-  "run_dir": "runs/topkautoencoder",
+  "run_dir": "runs/l1autoencoder",
   "lr": 1e-4,
   "weight_decay": 0.0,
   "steps": 100000,
@@ -17,13 +25,6 @@
   "log_tb_every": 10,
   "save_every": 1000,
   "val_every": 100,
-  "checkpoint": null,
-  "recon_alpha": 1e4,
-  "from_disk": true,
-  "topk_params": {
-    "normalize_decoder": true,
-    "k": 32,
-    "multi_topk": false,
-    "auxk_alpha": 0.0
-  }
+  "start_checkpoint": null,
+  "from_disk": true
 }
