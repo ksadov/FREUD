@@ -10,18 +10,16 @@ from src.models.hooked_model import WhisperSubbedActivation
 import numpy as np
 import random
 import os
-from src.models.l1autoencoder import L1AutoEncoder
+from src.models.l1autoencoder import L1AutoEncoder, L1ForwardOutput
+from src.models.topkautoencoder import TopKAutoEncoder, TopKForwardOutput
 from pathlib import Path
 from torch.optim import RAdam
 from torch.optim.lr_scheduler import CosineAnnealingLR
 import gc
-from functools import partial
-from time import perf_counter
 import argparse
 import json
 import torchaudio
 from contextlib import nullcontext
-import time
 
 N_TRANSCRIPTS = 4
 
@@ -53,7 +51,7 @@ def init_dataloader(from_disk: bool, data_path: str, whisper_model: str, sae_che
 
 
 def validate(
-    model: L1AutoEncoder,
+    model: L1AutoEncoder | TopKAutoEncoder,
     val_folder: str,
     device: torch.device,
     layer_name: str,
@@ -70,14 +68,19 @@ def validate(
     )
     losses_recon = []
     losses_l1 = []
+    fvus = []
+    losses_auxk = []
+    multi_topk_fvu = []
     subbed_transcripts = []
     base_transcripts = []
     base_filenames = []
 
     val_loader, _, _ = init_dataloader(
         from_disk, val_folder, whisper_model_name, None, layer_name, device, 1, 1, None)
+    mag_vals_dim = model.n_dict_components if isinstance(
+        model, L1AutoEncoder) else model.topk_params["k"]
     encoded_magnitude_values = torch.zeros(
-        (len(val_loader), model.n_dict_components)).to(device)
+        (len(val_loader), mag_vals_dim)).to(device)
     context_manager = autocast(device_type=str(
         device)) if device == torch.device("cuda") else nullcontext()
 
@@ -87,11 +90,21 @@ def validate(
             activations = activations.to(device)
             filenames = filenames[0]
             out = model(activations)
-            detached_encoded = torch.abs(out.encoded.detach()).squeeze()
+            if isinstance(out, L1ForwardOutput):
+                detached_encoded = torch.abs(
+                    out.encoded.latent.detach()).squeeze()
+            elif isinstance(out, TopKForwardOutput):
+                detached_encoded = torch.abs(
+                    out.encoded.top_acts.detach()).squeeze()
             encoded_max = torch.max(detached_encoded, dim=0).values
             encoded_magnitude_values[i] = encoded_max
-            losses_recon.append(out.reconstruction_loss.item())
-            losses_l1.append(out.l1_loss.item())
+            if isinstance(model, L1AutoEncoder):
+                losses_recon.append(out.reconstruction_loss.item())
+                losses_l1.append(out.l1_loss.item())
+            elif isinstance(model, TopKAutoEncoder):
+                fvus.append(out.fvu.item())
+                losses_auxk.append(out.auxk_loss.item())
+                multi_topk_fvu.append(out.multi_topk_fvu.item())
             if i < N_TRANSCRIPTS:
                 mels = get_mels_from_audio_path(device, filenames)
                 subbed_result = whisper_sub.forward(mels, out.sae_out)
@@ -107,7 +120,14 @@ def validate(
         encoded_magnitude_values, dim=0).cpu().numpy()
     print("Calculating stds...")
     encoded_mag_stds = torch.std(encoded_magnitude_values, dim=0).cpu().numpy()
-    return (np.array(losses_recon).mean(), np.array(losses_l1).mean(), subbed_transcripts, base_transcripts,
+    losses_dict = {
+        "l1": np.array(losses_l1).mean(),
+        "recon": np.array(losses_recon).mean(),
+        "fvu": np.array(fvus).mean(),
+        "auxk_loss": np.array(losses_auxk).mean(),
+        "multi_topk_fvu": np.array(multi_topk_fvu).mean()
+    }
+    return (losses_dict, subbed_transcripts, base_transcripts,
             base_filenames, encoded_mag_means, encoded_mag_stds)
 
 
@@ -204,12 +224,15 @@ def train(seed: int,
           layer_name: str,
           whisper_model: str,
           from_disk: bool,
+          autoencoder_variant: str,
+          topk_params: Optional[dict]
           ):
     set_seeds(seed)
     train_loader, feat_dim, dset_len = init_dataloader(
         from_disk, train_folder, whisper_model, None, layer_name, device, batch_size, dl_max_workers, None)
 
     hparam_dict = {
+        "autoencoder_variant": autoencoder_variant,
         "lr": lr,
         "weight_decay": weight_decay,
         "steps": steps,
@@ -222,9 +245,12 @@ def train(seed: int,
         "activation_size": feat_dim,
         "train_folder": train_folder,
         "val_folder": val_folder,
+        "topk_params": topk_params
     }
-
-    model = L1AutoEncoder(hparam_dict).to(device)
+    assert autoencoder_variant in ["l1", "topk"], \
+        f"Invalid autoencoder variant: {autoencoder_variant}, must be 'l1' or 'topk'"
+    model = L1AutoEncoder(hparam_dict).to(
+        device) if autoencoder_variant == "l1" else TopKAutoEncoder(hparam_dict).to(device)
     dist_model = model
 
     os.makedirs(run_dir, exist_ok=True)
@@ -271,7 +297,10 @@ def train(seed: int,
 
             with autocast(str(device)):
                 out = dist_model(activations)
-                loss = out.reconstruction_loss + out.l1_loss
+                if isinstance(out, L1ForwardOutput):
+                    loss = out.reconstruction_loss + out.l1_loss
+                else:
+                    loss = out.fvu + out.auxk_loss + out.multi_topk_fvu / 8
 
             loss.backward()
             torch.nn.utils.clip_grad_norm_(
@@ -286,15 +315,28 @@ def train(seed: int,
                 'step': state["step"]
             })
 
-            meta["loss_recon"] = out.reconstruction_loss.item()
-            meta["loss_l1"] = out.l1_loss.item()
+            if isinstance(out, L1ForwardOutput):
+                meta["loss_recon"] = out.reconstruction_loss.item()
+                meta["loss_l1"] = out.l1_loss.item()
+            else:
+                meta["fvu"] = out.fvu.item()
+                meta["auxk_loss"] = out.auxk_loss.item()
+                meta["multi_topk_fvu"] = out.multi_topk_fvu.item()
 
             if state["step"] % log_tb_every == 0:
                 tb_logger.add_scalar("train/loss", loss, state["step"])
-                tb_logger.add_scalar("train/loss_recon",
-                                     meta["loss_recon"], state["step"])
-                tb_logger.add_scalar(
-                    "train/loss_l1", meta["loss_l1"], state["step"])
+                if isinstance(out, L1ForwardOutput):
+                    tb_logger.add_scalar("train/loss_recon",
+                                         meta["loss_recon"], state["step"])
+                    tb_logger.add_scalar(
+                        "train/loss_l1", meta["loss_l1"], state["step"])
+                else:
+                    tb_logger.add_scalar(
+                        "train/fvu", meta["fvu"], state["step"])
+                    tb_logger.add_scalar(
+                        "train/auxk_loss", meta["auxk_loss"], state["step"])
+                    tb_logger.add_scalar(
+                        "train/multi_topk_fvu", meta["multi_topk_fvu"], state["step"])
                 tb_logger.add_scalar(
                     "train/lr", scheduler.get_last_lr()[0], state["step"])
 
@@ -304,18 +346,31 @@ def train(seed: int,
 
             if state["step"] % val_every == 0:
                 print("Validating...")
-                val_loss_recon, val_loss_l1, subbed_transcripts, base_transcripts, base_filenames, \
+                losses_dict, subbed_transcripts, base_transcripts, base_filenames, \
                     encoded_mag_means, encoded_mag_stds = validate(
                         model, val_folder, device, layer_name,
                         whisper_model, not logged_base_transcripts, from_disk
                     )
                 logged_base_transcripts = True
-                print(
-                    f"{state['step']} validation, loss_recon={val_loss_recon:.3f}")
+                if isinstance(model, L1AutoEncoder):
+                    print(
+                        f"{state['step']} validation, loss_recon={losses_dict['recon']}, loss_l1={losses_dict['l1']}")
+                else:
+                    print(
+                        f"{state['step']} validation, fvu={losses_dict['fvu']}, auxk_loss={losses_dict['auxk_loss']}, multi_topk_fvu={losses_dict['multi_topk_fvu']}")
 
-                tb_logger.add_scalar(
-                    "val/loss_recon", val_loss_recon, state["step"])
-                tb_logger.add_scalar("val/loss_l1", val_loss_l1, state["step"])
+                if isinstance(model, L1AutoEncoder):
+                    tb_logger.add_scalar(
+                        "val/loss_recon", losses_dict['recon'], state["step"])
+                    tb_logger.add_scalar(
+                        "val/loss_l1", losses_dict['l1'], state["step"])
+                else:
+                    tb_logger.add_scalar(
+                        "val/fvu", losses_dict['fvu'], state["step"])
+                    tb_logger.add_scalar(
+                        "val/auxk_loss", losses_dict['auxk_loss'], state["step"])
+                    tb_logger.add_scalar(
+                        "val/multi_topk_fvu", losses_dict['multi_topk_fvu'], state["step"])
 
                 tb_logger.add_histogram(
                     "val/encoded/magnitude_means", np.array(encoded_mag_means), state["step"])
@@ -335,9 +390,11 @@ def train(seed: int,
                         tb_logger.add_audio(
                             f"val/transcripts/audio_{i}", audio, state["step"], sample_rate=16000)
 
-                if val_loss_recon < state["best_val_loss"]:
+                save_loss = losses_dict['val_loss_recon'] if isinstance(
+                    model, L1AutoEncoder) else losses_dict['fvu']
+                if save_loss < state["best_val_loss"]:
                     print("Saving new best validation")
-                    state["best_val_loss"] = val_loss_recon
+                    state["best_val_loss"] = save_loss
                     save_checkpoint(state, checkpoint_out_dir + "/bestval.pth")
                     pytorch_model_path = model_out[:-3] + ".bestval"
                     torch.save(model, pytorch_model_path)

@@ -7,7 +7,7 @@ from typing import Optional
 
 from src.dataset.audio import AudioDataset
 from src.models.hooked_model import init_cache
-from src.models.l1autoencoder import init_from_checkpoint
+from src.models.l1autoencoder import L1AutoEncoder
 
 
 class FlyActivationDataLoader(torch.utils.data.DataLoader):
@@ -20,7 +20,7 @@ class FlyActivationDataLoader(torch.utils.data.DataLoader):
                  subset_size: Optional[int] = None):
         self.whisper_cache = init_cache(whisper_model, layer_name, device)
         self.whisper_cache.model.eval()
-        self.sae_model = init_from_checkpoint(
+        self.sae_model = L1AutoEncoder.init_from_checkpoint(
             sae_checkpoint) if sae_checkpoint else None
         self._dataset = AudioDataset(data_path, device)
         if subset_size:

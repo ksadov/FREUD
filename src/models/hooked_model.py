@@ -146,7 +146,8 @@ class WhisperSubbedActivation(torch.nn.Module):
 
     def _get_substitution_hook(self, substitution_activation):
         def hook(module, input, output):
-            return substitution_activation
+            sub_act = substitution_activation.to(output.dtype)
+            return sub_act
 
         return hook
 

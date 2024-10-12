@@ -6,6 +6,9 @@ from torch import Tensor, nn
 
 from src.models.hooked_model import WhisperActivationCache, activations_from_audio
 
+# modified from
+# https://github.com/er537/whisper_interpretability/tree/master/whisper_interpretability/sparse_coding/train/autoencoder.py
+
 
 class L1EncoderOutput(NamedTuple):
     latent: Tensor
@@ -75,14 +78,14 @@ class L1AutoEncoder(nn.Module):
         loss_recon = self.recon_alpha * mse_loss(x_hat, x, -1, "mean")
         return L1ForwardOutput(sae_out=x_hat, encoded=c, l1_loss=loss_l1, reconstruction_loss=loss_recon)
 
-
-def init_from_checkpoint(checkpoint: str):
-    checkpoint = torch.load(checkpoint)
-    hp = checkpoint['hparams']
-    model = L1AutoEncoder(hp)
-    model.load_state_dict(checkpoint['model'])
-    model.eval()
-    return model
+    @staticmethod
+    def init_from_checkpoint(checkpoint: str):
+        checkpoint = torch.load(checkpoint)
+        hp = checkpoint['hparams']
+        model = L1AutoEncoder(hp)
+        model.load_state_dict(checkpoint['model'])
+        model.eval()
+        return model
 
 
 def get_audio_features(sae_model: L1AutoEncoder, whisper_cache: WhisperActivationCache, audio_fname: str):

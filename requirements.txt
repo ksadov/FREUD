@@ -6,6 +6,7 @@ matplotlib
 regex
 openai-whisper
 npy-append-array
+einops
 # for the interactive GUI
 Flask
 Flask-CORS
