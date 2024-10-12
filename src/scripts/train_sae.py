@@ -209,7 +209,6 @@ def train(seed: int,
           lr: float,
           weight_decay: float,
           steps: int,
-          grad_acc_steps: int,
           clip_thresh: float,
           batch_size: int,
           dl_max_workers: int,
@@ -225,13 +224,11 @@ def train(seed: int,
     set_seeds(seed)
     train_loader, feat_dim, activation_dims, dset_len = init_dataloader(
         from_disk, train_folder, whisper_model, None, layer_name, device, batch_size, dl_max_workers, None)
-    train_loader = iter(train_loader)
 
     hparam_dict = {
         "lr": lr,
         "weight_decay": weight_decay,
         "steps": steps,
-        "grad_acc_steps": grad_acc_steps,
         "clip_thresh": clip_thresh,
         "batch_size": batch_size,
         "recon_alpha": recon_alpha,
@@ -243,16 +240,13 @@ def train(seed: int,
         "val_folder": val_folder,
     }
 
-    # train_dataset = TokenEmbeddingDataset()
     model = AutoEncoder(hparam_dict).to(device)
     dist_model = model
 
-    # make run dir
     os.makedirs(run_dir, exist_ok=True)
     checkpoint_out_dir = run_dir + "/checkpoints"
     os.makedirs(checkpoint_out_dir, exist_ok=True)
 
-    # setup logging
     tb_logger = prepare_tb_logging(run_dir)
     tb_logger.add_text("hparams", json.dumps(hparam_dict, indent=4))
     model_out = run_dir + "/model"
@@ -265,7 +259,6 @@ def train(seed: int,
     )
     scheduler = CosineAnnealingLR(optimizer, T_max=steps, eta_min=0)
 
-    # Object that contains the main state of the train loop
     state = {
         "model": model,
         "optimizer": optimizer,
@@ -279,78 +272,43 @@ def train(seed: int,
     meta["model_params"] = sum(x.numel() for x in dist_model.parameters())
 
     if checkpoint:
-        # loading state_dicts in-place
         print(f"Checkpoint: {checkpoint}")
         load_checkpoint(state, checkpoint, device=device)
 
     recon_loss_fn = partial(mse_loss, ignored_index=-1, reduction="mean")
-    total_steps_per_epoch = dset_len // (batch_size * grad_acc_steps)
 
-    epoch = 0
-    train_loader = iter(train_loader)
-    while True:
-        epoch += 1
-        print(f"Epoch {epoch}")
+    while state["step"] < steps:
+        model.train()
+        pbar = tqdm(enumerate(train_loader), total=len(
+            train_loader), desc=f"Training")
 
-        # Initialize tqdm progress bar for this epoch
-        pbar = tqdm(total=total_steps_per_epoch,
-                    desc=f"Epoch {epoch}", unit="step")
+        for batch_idx, (activations, _) in pbar:
+            activations = activations.to(device)
 
-        for _ in range(total_steps_per_epoch):
-            forward_time = 0
-            backward_time = 0
-            losses_recon = []
-            losses_l1 = []
-            step_start_time = time.time()
-            for _ in range(grad_acc_steps):
-                try:
-                    activations, _ = next(train_loader)
-                    activations = activations.to(device)
-                except StopIteration:
-                    loader, _, _, _ = init_dataloader(
-                        from_disk, train_folder, whisper_model, None, layer_name, device, batch_size, dl_max_workers, None)
-                    train_loader = iter(loader)
-                    activations, filenames = next(train_loader)
-                    activations = activations.to(device)
+            optimizer.zero_grad()
 
-                # Forward pass
-                with autocast(str(device)):
-                    start_time = perf_counter()
-                    pred, c = dist_model(activations)
-                    forward_time += perf_counter() - start_time
-                    loss_recon = recon_alpha * recon_loss_fn(pred, activations)
-                    loss_l1 = torch.norm(c, 1, dim=activation_dims).mean()
-                    loss = loss_recon + loss_l1
-                    losses_recon.append(loss_recon.item())
-                    losses_l1.append(loss_l1.item())
+            with autocast(str(device)):
+                pred, c = dist_model(activations)
+                loss_recon = recon_alpha * recon_loss_fn(pred, activations)
+                loss_l1 = torch.norm(c, 1, dim=activation_dims).mean()
+                loss = loss_recon + loss_l1
 
-                    # Backward pass
-                    start_time = perf_counter()
-                    loss.backward()
-                    backward_time += perf_counter() - start_time
-
+            loss.backward()
             torch.nn.utils.clip_grad_norm_(
                 dist_model.parameters(), clip_thresh)
             optimizer.step()
             scheduler.step()
-            dist_model.zero_grad()
+
             state["step"] += 1
 
-            # Update tqdm progress bar
-            step_end_time = time.time()
-            step_time = step_end_time - step_start_time
-            pbar.update(1)
             pbar.set_postfix({
                 'loss': f"{loss.item():.3f}",
-                'time/step': f"{step_time:.3f}s"
+                'step': state["step"]
             })
-            step_start_time = step_end_time
 
-            meta["loss_recon"] = sum(losses_recon) / grad_acc_steps
-            meta["loss_l1"] = sum(losses_l1) / grad_acc_steps
-            meta["time_backward"] = backward_time
+            meta["loss_recon"] = loss_recon.item()
+            meta["loss_l1"] = loss_l1.item()
 
-            # log training losses
             if state["step"] % log_tb_every == 0:
                 tb_logger.add_scalar("train/loss", loss, state["step"])
                 tb_logger.add_scalar("train/loss_recon",
@@ -360,12 +318,10 @@ def train(seed: int,
                 tb_logger.add_scalar(
                     "train/lr", scheduler.get_last_lr()[0], state["step"])
 
-            # save out model periodically
             if state["step"] % save_every == 0:
                 save_checkpoint(state, checkpoint_out_dir +
                                 "/step" + str(state["step"]) + ".pth")
 
-            # validate periodically
             if state["step"] % val_every == 0:
                 print("Validating...")
                 val_loss_recon, val_loss_l1, subbed_transcripts, base_transcripts, base_filenames, \
@@ -376,50 +332,38 @@ def train(seed: int,
                 logged_base_transcripts = True
                 print(
                     f"{state['step']} validation, loss_recon={val_loss_recon:.3f}")
-                # log validation losses
+
                 tb_logger.add_scalar(
                     "val/loss_recon", val_loss_recon, state["step"])
                 tb_logger.add_scalar("val/loss_l1", val_loss_l1, state["step"])
-                # not logging individual means and stds as it's too verbose
-                """
-                for i, (mean, std) in enumerate(zip(encoded_means, encoded_stds)):
-                    tb_logger.add_scalar(
-                        f"val/encoded/mean_{i}", mean, state["step"])
-                    tb_logger.add_scalar(
-                        f"val/encoded/std_{i}", std, state["step"])
-                """
-                # display histogram of encoded values sorted high to low to let us see dead latents
+
                 tb_logger.add_histogram(
                     "val/encoded/magnitude_means", np.array(encoded_mag_means), state["step"])
                 tb_logger.add_histogram(
                     "val/encoded/magnitude_stds", np.array(encoded_mag_stds), state["step"])
+
                 for i, transcript in enumerate(subbed_transcripts):
                     tb_logger.add_text(
                         f"val/transcripts/reconstructed_{i}", transcript, state["step"])
-                if base_transcripts != []:
+
+                if base_transcripts:
                     for i, transcript in enumerate(base_transcripts):
                         tb_logger.add_text(
                             f"val/transcripts/base_{i}", transcript, state["step"])
                     for i, filename in enumerate(base_filenames):
-                        # log audio file, which is a flac at 16000 Hz
                         audio = torchaudio.load(filename)[0]
                         tb_logger.add_audio(
                             f"val/transcripts/audio_{i}", audio, state["step"], sample_rate=16000)
-                if val_loss_recon.item() < state["best_val_loss"]:
-                    print("Saving new best validation")
-                    state["best_val_loss"] = val_loss_recon.item()
-                    save_checkpoint(state, checkpoint_out_dir +
-                                    "/bestval" + ".pth")
 
-                    # Save PyTorch model for PR area calculation
+                if val_loss_recon < state["best_val_loss"]:
+                    print("Saving new best validation")
+                    state["best_val_loss"] = val_loss_recon
+                    save_checkpoint(state, checkpoint_out_dir + "/bestval.pth")
                     pytorch_model_path = model_out[:-3] + ".bestval"
                     torch.save(model, pytorch_model_path)
 
-            if steps != -1 and state["step"] >= steps:
-                pbar.close()
+            if state["step"] >= steps:
                 break
-
-        pbar.close()
 
         save_checkpoint(state, checkpoint_out_dir +
                         "/step" + str(state["step"]) + ".pth")
