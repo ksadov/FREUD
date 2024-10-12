@@ -122,11 +122,11 @@ def validate(
     print("Calculating stds...")
     encoded_mag_stds = torch.std(encoded_magnitude_values, dim=0).cpu().numpy()
     losses_dict = {
-        "l1": np.array(losses_l1).mean(),
-        "recon": np.array(losses_recon).mean(),
-        "fvu": np.array(fvus).mean(),
-        "auxk_loss": np.array(losses_auxk).mean(),
-        "multi_topk_fvu": np.array(multi_topk_fvu).mean()
+        "l1": np.array(losses_l1).mean() if losses_l1 else None,
+        "recon": np.array(losses_recon).mean() if losses_recon else None,
+        "fvu": np.array(fvus).mean() if fvus else None,
+        "auxk_loss": np.array(losses_auxk).mean() if losses_auxk else None,
+        "multi_topk_fvu": np.array(multi_topk_fvu).mean() if multi_topk_fvu else None
     }
     return (losses_dict, subbed_transcripts, base_transcripts,
             base_filenames, encoded_mag_means, encoded_mag_stds)
@@ -390,7 +390,7 @@ def train(seed: int,
                         tb_logger.add_audio(
                             f"val/transcripts/audio_{i}", audio, state["step"], sample_rate=16000)
 
-                save_loss = losses_dict['val_loss_recon'] if isinstance(
+                save_loss = losses_dict['recon'] if isinstance(
                     model, L1AutoEncoder) else losses_dict['fvu']
                 if save_loss < state["best_val_loss"]:
                     print("Saving new best validation")

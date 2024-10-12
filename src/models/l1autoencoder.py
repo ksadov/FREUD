@@ -6,6 +6,7 @@ from torch import Tensor, nn
 
 from src.models.hooked_model import WhisperActivationCache, activations_from_audio
 from src.models.config import L1AutoEncoderConfig
+from src.utils.models import get_n_dict_components
 
 # modified from
 # https://github.com/er537/whisper_interpretability/tree/master/whisper_interpretability/sparse_coding/train/autoencoder.py
@@ -46,7 +47,8 @@ class L1AutoEncoder(nn.Module):
         self.cfg = cfg
         self.tied = True  # tie encoder and decoder weights
         self.activation_size = activation_size
-        self.n_dict_components = cfg.n_dict_components
+        self.n_dict_components = get_n_dict_components(
+            activation_size, cfg.expansion_factor, cfg.n_dict_components)
         self.recon_alpha = cfg.recon_alpha
 
         # Only defining the decoder layer, encoder will share its weights
@@ -74,7 +76,7 @@ class L1AutoEncoder(nn.Module):
         x_hat = self.decoder(c)
         loss_l1 = torch.norm(c, 1, dim=2).mean()
         loss_recon = self.recon_alpha * mse_loss(x_hat, x, -1, "mean")
-        return L1ForwardOutput(sae_out=x_hat, encoded=c, l1_loss=loss_l1, reconstruction_loss=loss_recon)
+        return L1ForwardOutput(sae_out=x_hat, encoded=L1EncoderOutput(c), l1_loss=loss_l1, reconstruction_loss=loss_recon)
 
     @staticmethod
     def init_from_checkpoint(checkpoint: str):

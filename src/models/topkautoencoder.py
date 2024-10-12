@@ -5,6 +5,7 @@ import torch
 from torch import Tensor, nn
 
 from src.models.config import TopKAutoEncoderConfig
+from src.utils.models import get_n_dict_components
 
 
 # modified from https://github.com/EleutherAI/sae/tree/main/sae/sae.py
@@ -55,10 +56,10 @@ class TopKAutoEncoder(nn.Module):
             - n_dict_components: number of dictionary components
         """
         super().__init__()
-        print("CFG!!!", cfg)
         self.cfg = cfg
         self.d_in = activation_size
-        self.n_dict_components = cfg.n_dict_components
+        self.n_dict_components = self.n_dict_components = get_n_dict_components(
+            activation_size, cfg.expansion_factor, cfg.n_dict_components)
 
         self.encoder = nn.Linear(
             self.d_in, self.n_dict_components)
