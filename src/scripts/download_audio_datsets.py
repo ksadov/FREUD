@@ -11,10 +11,10 @@ roots = {
 }
 files = {
     "librispeech": [
-      "test-other.tar.gz",
-      "dev-other.tar.gz",
-      "train-other-500.tar.gz",
-  ],
+        "test-other.tar.gz",
+        "dev-other.tar.gz",
+        "train-other-500.tar.gz",
+    ],
     "audioset": [
         "balanced_train_segments.csv",
         "bal_train00.tar",
@@ -41,6 +41,7 @@ files = {
     ]
 }
 
+
 def download_files(output_dir: str, dataset: str):
     """
     Download files corresponding to one of the available datasets (librispeech, audioset)
@@ -49,7 +50,8 @@ def download_files(output_dir: str, dataset: str):
     :param dataset: The dataset to download
     """
     os.makedirs(output_dir, exist_ok=True)
-    filtered_files = [file for file in files[dataset] if not os.path.exists(os.path.join(output_dir, file))]
+    filtered_files = [file for file in files[dataset]
+                      if not os.path.exists(os.path.join(output_dir, file))]
     for file in tqdm(filtered_files):
         url = os.path.join(roots[dataset], file)
         output_file = os.path.join(output_dir, file)
@@ -61,6 +63,7 @@ def download_files(output_dir: str, dataset: str):
                     if chunk:
                         f.write(chunk)
     print("All files downloaded to", output_dir)
+
 
 def extract_files(file_dir: str):
     """
@@ -76,11 +79,12 @@ def extract_files(file_dir: str):
             os.remove(file_path)
     print("All files extracted in", file_dir)
 
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output_dir", type=str, default="audio_data", 
+    parser.add_argument("--output_dir", type=str, default="audio_data",
                         help="The directory to save the downloaded files")
-    parser.add_argument("--dataset", type=str, default="librispeech", 
+    parser.add_argument("--dataset", type=str, default="librispeech",
                         help="The dataset to download (must be one of librispeech, audioset)")
     args = parser.parse_args()
     out_dir = os.path.join(args.output_dir, args.dataset)
@@ -88,6 +92,7 @@ def main():
         raise ValueError(f"Dataset {args.dataset} not found in {roots.keys()}")
     download_files(out_dir, args.dataset)
     extract_files(out_dir)
+
 
 if __name__ == "__main__":
     main()

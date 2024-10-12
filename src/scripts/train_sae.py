@@ -10,7 +10,7 @@ from src.models.hooked_model import WhisperSubbedActivation
 import numpy as np
 import random
 import os
-from src.models.autoencoder import AutoEncoder
+from src.models.l1autoencoder import L1AutoEncoder
 from pathlib import Path
 from torch.optim import RAdam
 from torch.optim.lr_scheduler import CosineAnnealingLR
@@ -48,18 +48,14 @@ def init_dataloader(from_disk: bool, data_path: str, whisper_model: str, sae_che
             subset_size=subset_size
         )
     feat_dim = loader.activation_shape[-1]
-    activation_dims = len(loader.activation_shape)
     dset_len = loader.dataset_length
-    return loader, feat_dim, activation_dims, dset_len
+    return loader, feat_dim, dset_len
 
 
 def validate(
-    model: torch.nn.Module,
-    recon_loss_fn: torch.nn.Module,
-    recon_alpha: float,
+    model: L1AutoEncoder,
     val_folder: str,
     device: torch.device,
-    activation_dims: int,
     layer_name: str,
     whisper_model_name: str,
     log_base_transcripts: bool,
@@ -78,7 +74,7 @@ def validate(
     base_transcripts = []
     base_filenames = []
 
-    val_loader, _, _, _ = init_dataloader(
+    val_loader, _, _ = init_dataloader(
         from_disk, val_folder, whisper_model_name, None, layer_name, device, 1, 1, None)
     encoded_magnitude_values = torch.zeros(
         (len(val_loader), model.n_dict_components)).to(device)
@@ -90,17 +86,15 @@ def validate(
             activations, filenames = datapoints
             activations = activations.to(device)
             filenames = filenames[0]
-            pred, c = model(activations)
-            detached_c = torch.abs(c.detach()).squeeze()
-            c_max = torch.max(detached_c, dim=0).values
-            encoded_magnitude_values[i] = c_max
-            losses_recon.append(
-                recon_alpha * recon_loss_fn(pred, activations).item())
-            losses_l1.append(torch.norm(
-                c, 1, dim=activation_dims).mean().item())
+            out = model(activations)
+            detached_encoded = torch.abs(out.encoded.detach()).squeeze()
+            encoded_max = torch.max(detached_encoded, dim=0).values
+            encoded_magnitude_values[i] = encoded_max
+            losses_recon.append(out.reconstruction_loss.item())
+            losses_l1.append(out.l1_loss.item())
             if i < N_TRANSCRIPTS:
                 mels = get_mels_from_audio_path(device, filenames)
-                subbed_result = whisper_sub.forward(mels, pred)
+                subbed_result = whisper_sub.forward(mels, out.sae_out)
                 subbed_transcripts.append(subbed_result.text)
                 if log_base_transcripts:
                     base_result = whisper_sub.forward(mels, None)
@@ -115,16 +109,6 @@ def validate(
     encoded_mag_stds = torch.std(encoded_magnitude_values, dim=0).cpu().numpy()
     return (np.array(losses_recon).mean(), np.array(losses_l1).mean(), subbed_transcripts, base_transcripts,
             base_filenames, encoded_mag_means, encoded_mag_stds)
-
-
-def mse_loss(input, target, ignored_index, reduction):
-    # mse_loss with ignored_index
-    mask = target == ignored_index
-    out = (input[~mask] - target[~mask]) ** 2
-    if reduction == "mean":
-        return out.mean()
-    elif reduction == "None":
-        return out
 
 
 def set_seeds(seed=42):
@@ -222,7 +206,7 @@ def train(seed: int,
           from_disk: bool,
           ):
     set_seeds(seed)
-    train_loader, feat_dim, activation_dims, dset_len = init_dataloader(
+    train_loader, feat_dim, dset_len = init_dataloader(
         from_disk, train_folder, whisper_model, None, layer_name, device, batch_size, dl_max_workers, None)
 
     hparam_dict = {
@@ -240,7 +224,7 @@ def train(seed: int,
         "val_folder": val_folder,
     }
 
-    model = AutoEncoder(hparam_dict).to(device)
+    model = L1AutoEncoder(hparam_dict).to(device)
     dist_model = model
 
     os.makedirs(run_dir, exist_ok=True)
@@ -275,8 +259,6 @@ def train(seed: int,
         print(f"Checkpoint: {checkpoint}")
         load_checkpoint(state, checkpoint, device=device)
 
-    recon_loss_fn = partial(mse_loss, ignored_index=-1, reduction="mean")
-
     while state["step"] < steps:
         model.train()
         pbar = tqdm(enumerate(train_loader), total=len(
@@ -288,10 +270,8 @@ def train(seed: int,
             optimizer.zero_grad()
 
             with autocast(str(device)):
-                pred, c = dist_model(activations)
-                loss_recon = recon_alpha * recon_loss_fn(pred, activations)
-                loss_l1 = torch.norm(c, 1, dim=activation_dims).mean()
-                loss = loss_recon + loss_l1
+                out = dist_model(activations)
+                loss = out.reconstruction_loss + out.l1_loss
 
             loss.backward()
             torch.nn.utils.clip_grad_norm_(
@@ -306,8 +286,8 @@ def train(seed: int,
                 'step': state["step"]
             })
 
-            meta["loss_recon"] = loss_recon.item()
-            meta["loss_l1"] = loss_l1.item()
+            meta["loss_recon"] = out.reconstruction_loss.item()
+            meta["loss_l1"] = out.l1_loss.item()
 
             if state["step"] % log_tb_every == 0:
                 tb_logger.add_scalar("train/loss", loss, state["step"])
@@ -326,7 +306,7 @@ def train(seed: int,
                 print("Validating...")
                 val_loss_recon, val_loss_l1, subbed_transcripts, base_transcripts, base_filenames, \
                     encoded_mag_means, encoded_mag_stds = validate(
-                        model, recon_loss_fn, recon_alpha, val_folder, device, activation_dims, layer_name,
+                        model, val_folder, device, layer_name,
                         whisper_model, not logged_base_transcripts, from_disk
                     )
                 logged_base_transcripts = True

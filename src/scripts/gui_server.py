@@ -16,6 +16,7 @@ top_fn = None
 n_features = None
 layer_name = None
 
+
 def get_gui_data(config: dict, from_disk: bool, files_to_search: Optional[int]) -> callable:
     if from_disk:
         dataloader = MemoryMappedActivationDataLoader(
@@ -39,9 +40,11 @@ def get_gui_data(config: dict, from_disk: bool, files_to_search: Optional[int]) 
     activation_shape = dataloader.activation_shape
     n_features = activation_shape[-1]
     layer_name = config['layer_name']
-    return (lambda neuron_idx, n_files, max_val, min_val, absolute_magnitude, return_max_per_file: \
-            top_activations(dataloader, neuron_idx, n_files, max_val, min_val, absolute_magnitude, return_max_per_file),
+    return (lambda neuron_idx, n_files, max_val, min_val, absolute_magnitude, return_max_per_file:
+            top_activations(dataloader, neuron_idx, n_files, max_val,
+                            min_val, absolute_magnitude, return_max_per_file),
             n_features, layer_name)
+
 
 def get_top_activations(top_fn: callable,
                         neuron_idx: int,
@@ -51,7 +54,8 @@ def get_top_activations(top_fn: callable,
                         absolute_magnitude: bool,
                         return_max_per_file: bool
                         ) -> tuple[list[str], list[torch.Tensor]]:
-    top, max_per_file = top_fn(neuron_idx, n_files, max_val, min_val, absolute_magnitude, return_max_per_file)
+    top, max_per_file = top_fn(
+        neuron_idx, n_files, max_val, min_val, absolute_magnitude, return_max_per_file)
     top_files = [x[0] for x in top]
     activations = [x[1] for x in top]
     print("Got top activations.")
@@ -87,7 +91,7 @@ def get_top_files():
     max_val = float(max_val_arg) if max_val_arg is not None else None
     min_val = float(min_val_arg) if min_val_arg is not None else None
     return_max_per_file = True
-    top_files, activations, max_per_file = get_top_activations(top_fn, neuron_idx, n_files, max_val, min_val, 
+    top_files, activations, max_per_file = get_top_activations(top_fn, neuron_idx, n_files, max_val, min_val,
                                                                absolute_magnitude, return_max_per_file)
     activations = [x.tolist() for x in activations]
     return jsonify({"top_files": top_files, "activations": activations, "max_per_file": max_per_file})

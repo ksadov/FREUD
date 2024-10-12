@@ -9,12 +9,14 @@ from functools import lru_cache
 
 from src.utils.constants import SAMPLE_RATE, N_FFT, HOP_LENGTH, N_MELS, N_SAMPLES
 
+
 def is_audio_file(file: str) -> bool:
     """
     Check if the file is an audio file based on the extension
     """
     AUDIO_FILE_EXTENSIONS = (".wav", ".flac", ".mp3", ".m4a", ".ogg")
     return any(file.endswith(ext) for ext in AUDIO_FILE_EXTENSIONS)
+
 
 def load_audio(file: str, sr: int = SAMPLE_RATE):
     """

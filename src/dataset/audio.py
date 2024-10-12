@@ -10,6 +10,7 @@ class AudioDataset(torch.utils.data.Dataset):
     Dataset for audio files. Returns a tuple of mel spectrogram and audio filename, where mel spectrogram is None if 
     calculate_mel is False.
     """
+
     def __init__(self, audio_folder: str, device: torch.device, calculate_mel: bool = True):
         super().__init__()
         self.audio_folder = audio_folder
@@ -27,7 +28,7 @@ class AudioDataset(torch.utils.data.Dataset):
                         root = os.path.abspath(root)
                     audio_files.append(os.path.join(root, file))
         return audio_files
-    
+
     def __getitem__(self, idx) -> dict:
         audio_filename = self.audio_files[idx]
         if self.calculate_mel:
@@ -35,6 +36,6 @@ class AudioDataset(torch.utils.data.Dataset):
         else:
             mel = None
         return mel, audio_filename
-    
+
     def __len__(self) -> int:
         return len(self.audio_files)

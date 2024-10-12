@@ -7,7 +7,7 @@ from typing import Optional
 
 from src.dataset.audio import AudioDataset
 from src.models.hooked_model import init_cache
-from src.models.autoencoder import init_from_checkpoint
+from src.models.l1autoencoder import init_from_checkpoint
 
 
 class FlyActivationDataLoader(torch.utils.data.DataLoader):

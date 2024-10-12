@@ -105,7 +105,7 @@ class WhisperActivationCache(BaseActivationModule):
         def hook(module, input, output):
             output_ = output.detach().cpu()
             self.activations = output_
-            
+
         return hook
 
 
@@ -149,11 +149,13 @@ class WhisperSubbedActivation(torch.nn.Module):
             return substitution_activation
 
         return hook
-    
+
+
 def init_cache(whisper_model: str, layer_to_cache: str, device: torch.device) -> WhisperActivationCache:
     whisper_model = whisper.load_model(whisper_model)
     whisper_model.eval()
     return WhisperActivationCache(model=whisper_model, layer_to_cache=layer_to_cache, device=device)
+
 
 def activations_from_audio(model: WhisperActivationCache, audio_fname: str) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
     with torch.no_grad():
