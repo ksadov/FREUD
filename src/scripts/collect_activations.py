@@ -6,8 +6,6 @@ from pathlib import Path
 from tqdm import tqdm
 from typing import Optional
 from npy_append_array import NpyAppendArray
-from src.models.l1autoencoder import L1EncoderOutput
-from src.models.topkautoencoder import TopKEncoderOutput
 from src.dataset.activations import FlyActivationDataLoader
 
 
@@ -134,7 +132,7 @@ def get_activations(
     metadata_file = os.path.join(out_folder, f"{layer_name}_metadata.json")
     if os.path.exists(metadata_file):
         os.remove(metadata_file)
-    if dataloader.activation_type in ["whisper", "l1"]:
+    if dataloader.activation_type == "tensor":
         tensor_file = os.path.join(out_folder, f"{layer_name}_tensors.npy")
         if os.path.exists(tensor_file):
             os.remove(tensor_file)
@@ -151,17 +149,14 @@ def get_activations(
     os.makedirs(out_folder, exist_ok=True)
     with torch.no_grad():
         for batch in tqdm(dataloader):
-            output, global_filenames = batch
-            if isinstance(output, L1EncoderOutput):
+            if dataloader.activation_type == "tensor":
+                activation, global_filenames = batch
                 save_activation_tensors_for_memory_mapping(
-                    metadata_file, tensor_file, output.latent, global_filenames)
-            elif isinstance(output, TopKEncoderOutput):
-                save_indexed_features_for_memory_mapping(
-                    metadata_file, feature_index_file, activation_value_file, output.top_acts,
-                    output.top_indices, global_filenames)
+                    metadata_file, tensor_file, activation, global_filenames)
             else:
-                save_activation_tensors_for_memory_mapping(
-                    metadata_file, tensor_file, output, global_filenames)
+                act_data, index_data, global_filenames = batch
+                save_indexed_features_for_memory_mapping(
+                    metadata_file, feature_index_file, activation_value_file, act_data, index_data, global_filenames)
 
 
 def main():

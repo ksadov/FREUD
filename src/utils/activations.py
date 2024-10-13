@@ -37,19 +37,30 @@ def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivation
     print("Searching activations...")
     pq = []
     max_per_file = []
-    for act_batch, audio_files in tqdm(dataloader):
-        if isinstance(act_batch, L1EncoderOutput):
-            act_batch = act_batch.latent
-        for encoded, audio_file in zip(act_batch, audio_files):
-            act = encoded[:, neuron_idx]
-            trimmed_activation = trim_activation(audio_file, act)
 
-            def filter_activation(max_activation_value: torch.Tensor) -> bool:
-                if max_val is not None and max_activation_value > max_val:
-                    return False
-                if min_val is not None and max_activation_value < min_val:
-                    return False
-                return True
+    def filter_activation(max_activation_value: torch.Tensor) -> bool:
+        if max_val is not None and max_activation_value > max_val:
+            return False
+        if min_val is not None and max_activation_value < min_val:
+            return False
+        return True
+    for batch in tqdm(dataloader):
+        if dataloader.activation_type == "tensor":
+            act_batch, audio_files = batch
+            act = act_batch[:, neuron_idx]
+        else:
+            act_batch, indexes, audio_files = batch
+            act = []
+            for i, top_indices_per_file in enumerate(indexes):
+                neuron_act = torch.zeros(len(top_indices_per_file))
+                for j, top_indices_per_timestep in enumerate(top_indices_per_file):
+                    if neuron_idx in top_indices_per_timestep:
+                        index_of_neuron = (top_indices_per_timestep == neuron_idx).nonzero(
+                        ).item()
+                        neuron_act[j] = act_batch[i][j][index_of_neuron]
+                act.append(neuron_act)
+        for audio_file, act in zip(audio_files, act):
+            trimmed_activation = trim_activation(audio_file, act)
             if absolute_magnitude:
                 max_activation_index = torch.argmax(
                     torch.abs(trimmed_activation))
@@ -69,7 +80,7 @@ def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivation
                 max_activation_loc = trimmed_activation.argmax().item()
                 max_activation_time = max_activation_loc * TIMESTEP_S
                 pq.append((audio_file, trimmed_activation,
-                          max_activation_value, max_activation_time))
+                           max_activation_value, max_activation_time))
                 pq.sort(key=lambda x: x[2], reverse=True)
                 pq = pq[:n_files]
     print("Search complete.")

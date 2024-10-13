@@ -40,12 +40,10 @@ class FlyActivationDataLoader(torch.utils.data.DataLoader):
         self.whisper_cache.model.eval()
         self.sae_model = init_sae_from_checkpoint(
             sae_checkpoint) if sae_checkpoint else None
-        if self.sae_model is None:
-            self.activation_type = "whisper"
-        elif isinstance(self.sae_model, L1AutoEncoder):
-            self.activation_type = "l1"
+        if isinstance(self.sae_model, TopKAutoEncoder):
+            self.activation_type = "indexed"
         else:
-            self.activation_type = "topk"
+            self.activation_type = "tensor"
         self._dataset = AudioDataset(data_path, device)
         if subset_size:
             self._dataset = torch.utils.data.Subset(
@@ -65,10 +63,10 @@ class FlyActivationDataLoader(torch.utils.data.DataLoader):
         with torch.no_grad():
             self.whisper_cache.forward(mels)
             first_activation = self.whisper_cache.activations[0]
-            if self.activation_type == "l1":
+            if isinstance(self.sae_model, L1AutoEncoder):
                 encoded = self.sae_model.encode(first_activation)
                 return encoded.latent.squeeze().shape
-            elif self.activation_type == "topk":
+            elif isinstance(self.sae_model, TopKAutoEncoder):
                 encoded = self.sae_model.encode(first_activation)
                 return encoded.top_acts.squeeze().shape
             else:
@@ -80,9 +78,12 @@ class FlyActivationDataLoader(torch.utils.data.DataLoader):
             mels, global_file_names = batch
             self.whisper_cache.forward(mels)
             activations = self.whisper_cache.activations
-            if self.sae_model:
+            if isinstance(self.sae_model, L1AutoEncoder):
                 encoded = self.sae_model.encode(activations)
-                yield encoded, global_file_names
+                yield encoded.latent, global_file_names
+            elif isinstance(self.sae_model, TopKAutoEncoder):
+                encoded = self.sae_model.encode(activations)
+                yield encoded.top_acts, encoded.top_indices, global_file_names
             else:
                 yield activations, global_file_names
 
@@ -100,12 +101,20 @@ class MemoryMappedActivationsDataset(Dataset):
         self.layer_name = layer_name
         self.metadata_file = os.path.join(
             data_path, f"{layer_name}_metadata.json")
-        self.tensor_file = os.path.join(data_path, f"{layer_name}_tensors.npy")
-
         with open(self.metadata_file, 'r') as f:
             self.metadata = json.load(f)
-
-        self.mmap = np.load(self.tensor_file, mmap_mode='r')
+        tensor_path = os.path.join(data_path, f"{layer_name}_tensors.npy")
+        if not os.path.exists(tensor_path):
+            activation_value_file = os.path.join(
+                data_path, f"{layer_name}_activation_values.npy")
+            feature_index_file = os.path.join(
+                data_path, f"{layer_name}_feature_indices.npy")
+            self.activation_type = "indexed"
+            self.act_mmap = np.load(activation_value_file, mmap_mode='r')
+            self.idx_mmap = np.load(feature_index_file, mmap_mode='r')
+        else:
+            self.activation_type = "tensor"
+            self.mmap = np.load(self.tensor_file, mmap_mode='r')
         if subset_size is not None:
             self.metadata['filenames'] = self.metadata['filenames'][:subset_size]
             self.metadata['tensor_shapes'] = self.metadata['tensor_shapes'][:subset_size]
@@ -122,13 +131,15 @@ class MemoryMappedActivationsDataset(Dataset):
         filename = self.metadata['filenames'][idx]
         tensor_shape = self.metadata['tensor_shapes'][idx]
 
-        # Get the flattened tensor data
-        tensor_data = self.mmap[idx]
+        if self.activation_type == "indexed":
+            act_data = self.act_mmap[idx]
+            idx_data = self.idx_mmap[idx]
+            return act_data, idx_data, filename
+        else:
+            tensor_data = self.mmap[idx]
+            tensor = torch.from_numpy(tensor_data.reshape(tensor_shape))
 
-        # Reshape the tensor data to its original shape
-        tensor = torch.from_numpy(tensor_data.reshape(tensor_shape))
-
-        return tensor, filename
+            return tensor, filename
 
 
 class MemoryMappedActivationDataLoader(torch.utils.data.DataLoader):
