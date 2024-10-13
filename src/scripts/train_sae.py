@@ -27,14 +27,16 @@ N_TRANSCRIPTS = 4
 
 
 def init_dataloader(from_disk: bool, data_path: str, whisper_model: str, sae_checkpoint: str, layer_name: str,
-                    device: torch.device, batch_size: int, dl_max_workers: int, subset_size: Optional[int]):
+                    device: torch.device, batch_size: int, dl_max_workers: int, subset_size: Optional[int],
+                    dl_kwargs: dict):
     if from_disk:
         loader = MemoryMappedActivationDataLoader(
             data_path=data_path,
             layer_name=layer_name,
             batch_size=batch_size,
             dl_max_workers=dl_max_workers,
-            subset_size=subset_size
+            subset_size=subset_size,
+            dl_kwargs=dl_kwargs
         )
     else:
         loader = FlyActivationDataLoader(
@@ -45,7 +47,8 @@ def init_dataloader(from_disk: bool, data_path: str, whisper_model: str, sae_che
             device=device,
             batch_size=batch_size,
             dl_max_workers=dl_max_workers,
-            subset_size=subset_size
+            subset_size=subset_size,
+            dl_kwargs=dl_kwargs
         )
     feat_dim = loader.activation_shape[-1]
     dset_len = loader.dataset_length
@@ -77,8 +80,11 @@ def validate(
     base_transcripts = []
     base_filenames = []
 
+    dl_kwargs = {
+        "shuffle": False,
+    }
     val_loader, _, _ = init_dataloader(
-        from_disk, val_folder, whisper_model_name, None, layer_name, device, 1, 1, None)
+        from_disk, val_folder, whisper_model_name, None, layer_name, device, 1, 1, None, dl_kwargs)
     mag_vals_dim = model.n_dict_components if isinstance(
         model, L1AutoEncoder) else model.cfg.k
     encoded_magnitude_values = torch.zeros(
@@ -230,9 +236,13 @@ def train(seed: int,
           autoencoder_config: dict
           ):
     set_seeds(seed)
+    dl_kwargs = {
+        "shuffle": True,
+        "drop_last": True
+    }
     train_loader, feat_dim, dset_len = init_dataloader(
         from_disk, train_folder, whisper_config['model'], None, whisper_config['layer_name'], device, batch_size,
-        dl_max_workers, None)
+        dl_max_workers, None, dl_kwargs)
 
     hparam_dict = {
         "autoencoder_variant": autoencoder_variant,
