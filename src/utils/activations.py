@@ -1,9 +1,12 @@
 from typing import Optional
 import torch
 import torchaudio
+from tqdm import tqdm
+
 from src.utils.constants import SAMPLE_RATE, TIMESTEP_S
 from src.dataset.activations import MemoryMappedActivationDataLoader, FlyActivationDataLoader
-from tqdm import tqdm
+from src.models.l1autoencoder import L1EncoderOutput
+from src.models.topkautoencoder import TopKEncoderOutput
 
 
 def trim_activation(audio_fname: str, activation: torch.Tensor) -> torch.Tensor:
@@ -35,8 +38,10 @@ def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivation
     pq = []
     max_per_file = []
     for act_batch, audio_files in tqdm(dataloader):
-        for act, audio_file in zip(act_batch, audio_files):
-            act = act[:, neuron_idx]
+        if isinstance(act_batch, L1EncoderOutput):
+            act_batch = act_batch.latent
+        for encoded, audio_file in zip(act_batch, audio_files):
+            act = encoded[:, neuron_idx]
             trimmed_activation = trim_activation(audio_file, act)
 
             def filter_activation(max_activation_value: torch.Tensor) -> bool:

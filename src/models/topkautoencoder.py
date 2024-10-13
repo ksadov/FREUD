@@ -172,13 +172,3 @@ class TopKAutoEncoder(nn.Module):
             self.W_dec.data,
             "d_sae, d_sae d_in -> d_sae d_in",
         )
-
-    @classmethod
-    def init_from_checkpoint(checkpoint: str):
-        checkpoint = torch.load(checkpoint)
-        hp = checkpoint['hparams']
-        activation_size = checkpoint['activation_size']
-        model = TopKAutoEncoder(activation_size, hp)
-        model.load_state_dict(checkpoint['model'])
-        model.eval()
-        return model

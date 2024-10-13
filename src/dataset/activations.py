@@ -8,6 +8,24 @@ from typing import Optional
 from src.dataset.audio import AudioDataset
 from src.models.hooked_model import init_cache
 from src.models.l1autoencoder import L1AutoEncoder
+from src.models.topkautoencoder import TopKAutoEncoder
+from src.models.config import L1AutoEncoderConfig, TopKAutoEncoderConfig
+
+
+def init_sae_from_checkpoint(checkpoint: str) -> L1AutoEncoder | TopKAutoEncoder:
+    checkpoint = torch.load(checkpoint)
+    activation_size = checkpoint['hparams']['activation_size']
+    if checkpoint['hparams']['autoencoder_variant'] == 'l1':
+        cfg = L1AutoEncoderConfig.from_dict(
+            checkpoint['hparams']['autoencoder_config'])
+        model = L1AutoEncoder(activation_size, cfg)
+    else:
+        cfg = TopKAutoEncoderConfig.from_dict(
+            checkpoint['hparams']['autoencoder_config'])
+        model = TopKAutoEncoder(activation_size, cfg)
+    model.load_state_dict(checkpoint['model'])
+    model.eval()
+    return model
 
 
 class FlyActivationDataLoader(torch.utils.data.DataLoader):
@@ -20,7 +38,7 @@ class FlyActivationDataLoader(torch.utils.data.DataLoader):
                  subset_size: Optional[int] = None):
         self.whisper_cache = init_cache(whisper_model, layer_name, device)
         self.whisper_cache.model.eval()
-        self.sae_model = L1AutoEncoder.init_from_checkpoint(
+        self.sae_model = init_sae_from_checkpoint(
             sae_checkpoint) if sae_checkpoint else None
         self._dataset = AudioDataset(data_path, device)
         if subset_size:
@@ -35,10 +53,6 @@ class FlyActivationDataLoader(torch.utils.data.DataLoader):
         self._dataloader = DataLoader(self._dataset, **dl_kwargs)
         self.activation_shape = self._get_activation_shape()
         self.dataset_length = len(self._dataset)
-        assert self.sae_model is None or layer_name == self.sae_model.hp['layer_name'], \
-            "layer_name must match the layer that the SAE model was trained on"
-        assert self.sae_model is None or self.sae_model.hp['whisper_model'] == whisper_model, \
-            "whisper_model must match the whisper_model that the SAE model was trained on"
 
     def _get_activation_shape(self):
         mels, _ = self._dataset[0]
@@ -46,8 +60,8 @@ class FlyActivationDataLoader(torch.utils.data.DataLoader):
             self.whisper_cache.forward(mels)
             first_activation = self.whisper_cache.activations[0]
             if self.sae_model:
-                _, c = self.sae_model(first_activation)
-                return c.squeeze().shape
+                encoded = self.sae_model.encode(first_activation)
+                return encoded.latent.squeeze().shape
             else:
                 return first_activation.squeeze().shape
 
@@ -58,8 +72,8 @@ class FlyActivationDataLoader(torch.utils.data.DataLoader):
             self.whisper_cache.forward(mels)
             activations = self.whisper_cache.activations
             if self.sae_model:
-                _, c = self.sae_model(activations)
-                yield c, global_file_names
+                encoded = self.sae_model.encode(activations)
+                yield encoded, global_file_names
             else:
                 yield activations, global_file_names
 

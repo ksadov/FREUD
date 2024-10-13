@@ -77,21 +77,3 @@ class L1AutoEncoder(nn.Module):
         loss_l1 = torch.norm(c, 1, dim=2).mean()
         loss_recon = self.recon_alpha * mse_loss(x_hat, x, -1, "mean")
         return L1ForwardOutput(sae_out=x_hat, encoded=L1EncoderOutput(c), l1_loss=loss_l1, reconstruction_loss=loss_recon)
-
-    @staticmethod
-    def init_from_checkpoint(checkpoint: str):
-        checkpoint = torch.load(checkpoint)
-        hp = checkpoint['hparams']
-        model_config = L1AutoEncoderConfig(hp['autoencoder_config'])
-        activation_size = hp['activation_size']
-        model = L1AutoEncoder(activation_size, model_config)
-        model.load_state_dict(checkpoint['model'])
-        model.eval()
-        return model
-
-
-def get_audio_features(sae_model: L1AutoEncoder, whisper_cache: WhisperActivationCache, audio_fname: str):
-    activations, _ = activations_from_audio(whisper_cache, audio_fname)
-    activation_values = torch.cat(list(activations.values()), dim=1)
-    out = sae_model.encode(activation_values)
-    return out.latent

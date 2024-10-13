@@ -5,7 +5,7 @@
   },
   "autoencoder_variant": "topk",
   "autoencoder_config": {
-    "expansion_factor": 2,
+    "expansion_factor": 32,
     "normalize_decoder": true,
     "k": 32,
     "multi_topk": false,
@@ -20,7 +20,7 @@
   "weight_decay": 0.0,
   "steps": 100000,
   "clip_thresh": 1.0,
-  "batch_size": 8,
+  "batch_size": 50,
   "dl_max_workers": 0,
   "log_tb_every": 10,
   "save_every": 1000,

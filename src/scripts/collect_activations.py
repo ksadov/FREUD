@@ -6,12 +6,12 @@ from pathlib import Path
 from tqdm import tqdm
 from typing import Optional
 from npy_append_array import NpyAppendArray
-
+from src.models.l1autoencoder import L1EncoderOutput
 from src.dataset.activations import FlyActivationDataLoader
 
 
-def save_activations_for_memory_mapping(metadata_file: Path, tensor_file: Path, activations: torch.tensor,
-                                        filenames: list[str]):
+def save_l1_encodings_for_memory_mapping(metadata_file: Path, tensor_file: Path, encodings: L1EncoderOutput,
+                                         filenames: list[str]):
     """
     Append activations to a memory-mappable file and update metadata
 
@@ -21,6 +21,7 @@ def save_activations_for_memory_mapping(metadata_file: Path, tensor_file: Path, 
     :param filenames: List of filenames corresponding to the activations
     :requires: len(activations) == len(filenames)
     """
+    activations = encodings.latent
     assert len(activations) == len(
         filenames), "Number of activations and filenames must match"
     # Load existing metadata if it exists
@@ -58,6 +59,8 @@ def get_activations(
     out_folder: str,
     max_workers: int,
     collect_max: Optional[int]
+
+
 ):
     """
     If sae_model is specified, collect activations from sae_model, otherwise collect activations from whisper_model
@@ -91,9 +94,12 @@ def get_activations(
     os.makedirs(out_folder, exist_ok=True)
     with torch.no_grad():
         for batch in tqdm(dataloader):
-            activations, global_filenames = batch
-            save_activations_for_memory_mapping(
-                metadata_file, tensor_file, activations, global_filenames)
+            encoded, global_filenames = batch
+            if isinstance(encoded, L1EncoderOutput):
+                save_l1_encodings_for_memory_mapping(
+                    metadata_file, tensor_file, encoded, global_filenames)
+            else:
+                raise ValueError("Only L1AutoEncoder is supported for now")
 
 
 def main():
