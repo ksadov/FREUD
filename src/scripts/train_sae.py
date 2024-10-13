@@ -14,7 +14,7 @@ from src.models.config import L1AutoEncoderConfig, TopKAutoEncoderConfig
 from src.models.l1autoencoder import L1AutoEncoder, L1ForwardOutput
 from src.models.topkautoencoder import TopKAutoEncoder, TopKForwardOutput
 from pathlib import Path
-from torch.optim import RAdam
+from torch.optim import RAdam, Adam
 from torch.optim.lr_scheduler import CosineAnnealingLR
 import gc
 import argparse
@@ -221,6 +221,7 @@ def train(seed: int,
           val_every: int,
           start_checkpoint: str,
           whisper_config: dict,
+          optimizer: str,
           from_disk: bool,
           autoencoder_variant: str,
           autoencoder_config: dict
@@ -264,9 +265,13 @@ def train(seed: int,
           for p in model.parameters()) / 1.0e6))
     logged_base_transcripts = False
 
-    optimizer = RAdam(
-        dist_model.parameters(), eps=1e-5, lr=lr, weight_decay=weight_decay
-    )
+    if optimizer == "radam":
+        optimizer = RAdam(
+            dist_model.parameters(), eps=1e-5, lr=lr, weight_decay=weight_decay
+        )
+    elif optimizer == "adam":
+        optimizer = Adam(dist_model.parameters(), lr=lr)
+
     scheduler = CosineAnnealingLR(optimizer, T_max=steps, eta_min=0)
 
     state = {

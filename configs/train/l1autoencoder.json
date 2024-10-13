@@ -22,6 +22,7 @@
   "log_tb_every": 10,
   "save_every": 1000,
   "val_every": 100,
+  "optimizer": "radam",
   "start_checkpoint": null,
   "from_disk": true
 }
