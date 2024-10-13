@@ -103,15 +103,15 @@ class MemoryMappedActivationsDataset(Dataset):
             data_path, f"{layer_name}_metadata.json")
         with open(self.metadata_file, 'r') as f:
             self.metadata = json.load(f)
-        tensor_path = os.path.join(data_path, f"{layer_name}_tensors.npy")
-        if not os.path.exists(tensor_path):
-            activation_value_file = os.path.join(
+        self.tensor_file = os.path.join(data_path, f"{layer_name}_tensors.npy")
+        if not os.path.exists(self.tensor_file):
+            self.activation_value_file = os.path.join(
                 data_path, f"{layer_name}_activation_values.npy")
-            feature_index_file = os.path.join(
+            self.feature_index_file = os.path.join(
                 data_path, f"{layer_name}_feature_indices.npy")
             self.activation_type = "indexed"
-            self.act_mmap = np.load(activation_value_file, mmap_mode='r')
-            self.idx_mmap = np.load(feature_index_file, mmap_mode='r')
+            self.act_mmap = np.load(self.activation_value_file, mmap_mode='r')
+            self.idx_mmap = np.load(self.feature_index_file, mmap_mode='r')
         else:
             self.activation_type = "tensor"
             self.mmap = np.load(self.tensor_file, mmap_mode='r')
