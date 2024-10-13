@@ -61,10 +61,11 @@ def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivation
         if min_val is not None and max_activation_value < min_val:
             return False
         return True
+
     for batch in tqdm(dataloader):
         if dataloader.activation_type == "tensor":
             act_batch, audio_files = batch
-            act = act_batch[:, neuron_idx]
+            act = act_batch[:, :, neuron_idx]
         else:
             act_batch, indexes, audio_files = batch
             act = activation_tensor_from_indexed(
