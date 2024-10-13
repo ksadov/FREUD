@@ -271,6 +271,9 @@ def train(seed: int,
         )
     elif optimizer == "adam":
         optimizer = Adam(dist_model.parameters(), lr=lr)
+    else:
+        raise ValueError(
+            f"Invalid optimizer: {optimizer}, must be 'radam' or 'adam'")
 
     scheduler = CosineAnnealingLR(optimizer, T_max=steps, eta_min=0)
 
