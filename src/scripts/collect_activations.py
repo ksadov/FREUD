@@ -27,13 +27,18 @@ def save_activation_tensors_for_memory_mapping(metadata_file: Path, tensor_file:
         with open(metadata_file, 'r') as f:
             metadata = json.load(f)
     else:
-        metadata = {'filenames': [], 'tensor_shapes': []}
+        metadata = {
+            'tensor_shape': list(activations[0].shape),
+            'filenames': []
+        }
 
     # Prepare new data and update metadata
     new_tensors = []
     for filename, tensor in zip(filenames, activations):
         metadata['filenames'].append(filename)
-        metadata['tensor_shapes'].append(list(tensor.shape))
+        if metadata['tensor_shape'] != list(tensor.shape):
+            raise ValueError(
+                f"All tensors must have the same shape as the first tensor. Expected {metadata['tensor_shape']}, got {tensor.shape}")
         new_tensors.append(tensor.cpu().numpy())
 
     # Save updated metadata
@@ -70,14 +75,19 @@ def save_indexed_features_for_memory_mapping(metadata_file: Path, feature_index_
         with open(metadata_file, 'r') as f:
             metadata = json.load(f)
     else:
-        metadata = {'filenames': [], 'tensor_shapes': []}
+        metadata = {
+            'tensor_shape': list(activation_values[0].shape),
+            'filenames': []
+        }
 
     # Prepare new data and update metadata
     new_activation_values = []
     new_feature_indices = []
     for filename, value, index in zip(filenames, activation_values, activation_indices):
         metadata['filenames'].append(filename)
-        metadata['tensor_shapes'].append(list(value.shape))
+        if metadata['tensor_shape'] != list(value.shape):
+            raise ValueError(
+                f"All tensors must have the same shape as the first tensor. Expected {metadata['tensor_shape']}, got {value.shape}")
         new_activation_values.append(value.cpu().numpy())
         new_feature_indices.append(index.cpu().numpy())
 

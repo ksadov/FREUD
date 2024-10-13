@@ -117,29 +117,30 @@ class MemoryMappedActivationsDataset(Dataset):
             self.mmap = np.load(self.tensor_file, mmap_mode='r')
         if subset_size is not None:
             self.metadata['filenames'] = self.metadata['filenames'][:subset_size]
-            self.metadata['tensor_shapes'] = self.metadata['tensor_shapes'][:subset_size]
             self.mmap = self.mmap[:subset_size]
         self.activation_shape = self._get_activation_shape()
 
     def _get_activation_shape(self):
-        return self.metadata['tensor_shapes'][0]
+        return self.metadata['tensor_shape']
 
     def __len__(self):
         return len(self.metadata['filenames'])
 
     def __getitem__(self, idx):
         filename = self.metadata['filenames'][idx]
-        tensor_shape = self.metadata['tensor_shapes'][idx]
 
         if self.activation_type == "indexed":
             act_data = self.act_mmap[idx]
-            act_data = torch.from_numpy(act_data.reshape(tensor_shape))
+            act_data = torch.from_numpy(
+                act_data.reshape(self.metadata['tensor_shape']))
             idx_data = self.idx_mmap[idx]
-            idx_data = torch.from_numpy(idx_data.reshape(tensor_shape))
+            idx_data = torch.from_numpy(idx_data.reshape(
+                self.metadata['tensor_shape']))
             return act_data, idx_data, filename
         else:
             tensor_data = self.mmap[idx]
-            tensor = torch.from_numpy(tensor_data.reshape(tensor_shape))
+            tensor = torch.from_numpy(tensor_data.reshape(
+                self.metadata['tensor_shape']))
 
             return tensor, filename
 
