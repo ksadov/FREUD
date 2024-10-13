@@ -3,7 +3,7 @@ import Button from 'react-bootstrap/Button';
 import AudioPlayerWithActivation from './AudioPlayerWithActivation';
 import Plot from 'react-plotly.js';
 
-const API_BASE_URL = 'http://localhost:5555';  // Replace with your actual IP address
+const API_BASE_URL = 'http://192.168.0.17:5555';  // Replace with your actual IP address
 
 const ActivationDisplay = () => {
   const [neuronIdx, setNeuronIdx] = useState('');

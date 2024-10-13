@@ -133,7 +133,9 @@ class MemoryMappedActivationsDataset(Dataset):
 
         if self.activation_type == "indexed":
             act_data = self.act_mmap[idx]
+            act_data = torch.from_numpy(act_data.reshape(tensor_shape))
             idx_data = self.idx_mmap[idx]
+            idx_data = torch.from_numpy(idx_data.reshape(tensor_shape))
             return act_data, idx_data, filename
         else:
             tensor_data = self.mmap[idx]
@@ -158,6 +160,7 @@ class MemoryMappedActivationDataLoader(torch.utils.data.DataLoader):
         }
         super().__init__(self._dataset, **dl_kwargs)
         self.activation_shape = self.dataset.activation_shape
+        self.activation_type = self.dataset.activation_type
         self.dataset_length = len(self._dataset)
 
     def __len__(self):
