@@ -9,7 +9,8 @@ from npy_append_array import NpyAppendArray
 from src.dataset.activations import FlyActivationDataLoader
 
 
-def save_data_for_memory_mapping(metadata_file: Path, data_files: List[Path], data: List[torch.Tensor], filenames: List[str]):
+def save_data_for_memory_mapping(metadata_file: Path, data_files: List[Path], data: List[torch.Tensor],
+                                 filenames: List[str], tensor_shape: List[int], activation_shape: List[int]):
     """
     Append data to memory-mappable file(s) and update metadata
 
@@ -27,7 +28,8 @@ def save_data_for_memory_mapping(metadata_file: Path, data_files: List[Path], da
             metadata = json.load(f)
     else:
         metadata = {
-            'tensor_shape': [list(tensor.shape) for tensor in data[0]],
+            'tensor_shape': tensor_shape,
+            'activation_shape': activation_shape,
             'filenames': []
         }
 
@@ -36,7 +38,7 @@ def save_data_for_memory_mapping(metadata_file: Path, data_files: List[Path], da
     for filename, *tensors in zip(filenames, *data):
         metadata['filenames'].append(filename)
         for i, tensor in enumerate(tensors):
-            if metadata['tensor_shape'][i] != list(tensor.shape):
+            if metadata['tensor_shape'] != list(tensor.shape):
                 raise ValueError(
                     f"All tensors must have the same shape as the first tensor. Expected {metadata['tensor_shape'][i]}, got {tensor.shape}")
             new_data[i].append(tensor.cpu().numpy())
@@ -103,12 +105,15 @@ def get_activations(
             if dataloader.activation_type == "tensor":
                 activation, global_filenames = batch
                 data = [activation]
+                tensor_shape = list(activation[0].shape)
             else:
                 act_data, index_data, global_filenames = batch
                 data = [act_data, index_data]
+                tensor_shape = list(act_data[0].shape)
 
             save_data_for_memory_mapping(
-                metadata_file, data_files, data, global_filenames)
+                metadata_file, data_files, data, global_filenames, tensor_shape, dataloader.activation_shape
+            )
 
 
 def main():

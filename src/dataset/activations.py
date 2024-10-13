@@ -66,8 +66,10 @@ class FlyActivationDataLoader(torch.utils.data.DataLoader):
                 encoded = self.sae_model.encode(first_activation)
                 return encoded.latent.squeeze().shape
             elif isinstance(self.sae_model, TopKAutoEncoder):
-                encoded = self.sae_model.encode(first_activation)
-                return encoded.top_acts.squeeze().shape
+                temporal_dim = self.sae_model.encode(
+                    first_activation).top_acts.squeeze.shape[0]
+                feature_dim = self.sae_model.n_dict_components
+                return torch.Size([temporal_dim, feature_dim])
             else:
                 return first_activation.squeeze().shape
 
@@ -120,7 +122,7 @@ class MemoryMappedActivationsDataset(Dataset):
         self.activation_shape = self._get_activation_shape()
 
     def _get_activation_shape(self):
-        return self.metadata['tensor_shape']
+        return self.metadata['activation_shape']
 
     def __len__(self):
         return len(self.metadata['filenames'])
