@@ -18,6 +18,22 @@ def trim_activation(audio_fname: str, activation: torch.Tensor) -> torch.Tensor:
     return activation[:n_frames]
 
 
+def activation_tensor_from_indexed(activation_values: torch.Tensor, activation_indices: torch.Tensor, neuron_idx: int) -> torch.Tensor:
+    """
+    Convert an indexed activation tensor to a dense tensor
+    """
+    act = []
+    for i, top_indices_per_file in enumerate(activation_indices):
+        neuron_act = torch.zeros(len(top_indices_per_file))
+        for j, top_indices_per_timestep in enumerate(top_indices_per_file):
+            if neuron_idx in top_indices_per_timestep:
+                index_of_neuron = (top_indices_per_timestep == neuron_idx).nonzero(
+                ).item()
+                neuron_act[j] = activation_values[i][j][index_of_neuron]
+        act.append(neuron_act)
+    return torch.stack(act)
+
+
 def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivationDataLoader, neuron_idx: int,
                     n_files: int, max_val: Optional[float], min_val: Optional[float],
                     absolute_magnitude: bool, return_max_per_file: bool) -> \
@@ -50,15 +66,8 @@ def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivation
             act = act_batch[:, neuron_idx]
         else:
             act_batch, indexes, audio_files = batch
-            act = []
-            for i, top_indices_per_file in enumerate(indexes):
-                neuron_act = torch.zeros(len(top_indices_per_file))
-                for j, top_indices_per_timestep in enumerate(top_indices_per_file):
-                    if neuron_idx in top_indices_per_timestep:
-                        index_of_neuron = (top_indices_per_timestep == neuron_idx).nonzero(
-                        ).item()
-                        neuron_act[j] = act_batch[i][j][index_of_neuron]
-                act.append(neuron_act)
+            act = activation_tensor_from_indexed(
+                act_batch, indexes, neuron_idx)
         for audio_file, act in zip(audio_files, act):
             trimmed_activation = trim_activation(audio_file, act)
             if absolute_magnitude:
