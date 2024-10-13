@@ -22,7 +22,7 @@ def activation_tensor_from_indexed(activation_values: torch.Tensor, activation_i
     """
     Convert an indexed activation tensor to a dense tensor
     """
-    act = []
+    act = torch.zeros(len(activation_indices), activation_indices.shape[1])
     for i, top_indices_per_file in enumerate(activation_indices):
         neuron_act = torch.zeros(len(top_indices_per_file))
         for j, top_indices_per_timestep in enumerate(top_indices_per_file):
@@ -30,10 +30,11 @@ def activation_tensor_from_indexed(activation_values: torch.Tensor, activation_i
                 index_of_neuron = (top_indices_per_timestep == neuron_idx).nonzero(
                 ).item()
                 neuron_act[j] = activation_values[i][j][index_of_neuron]
-        act.append(neuron_act)
-    return torch.stack(act)
+        act[i] = neuron_act
+    return act
 
 
+@torch.no_grad()
 def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivationDataLoader, neuron_idx: int,
                     n_files: int, max_val: Optional[float], min_val: Optional[float],
                     absolute_magnitude: bool, return_max_per_file: bool) -> \
