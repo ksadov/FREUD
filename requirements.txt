@@ -8,6 +8,7 @@ openai-whisper
 npy-append-array
 einops
 simple-parsing
+transformers
 # for the interactive GUI
 Flask
 Flask-CORS

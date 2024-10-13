@@ -16,6 +16,7 @@ from src.models.topkautoencoder import TopKAutoEncoder, TopKForwardOutput
 from pathlib import Path
 from torch.optim import RAdam, Adam
 from torch.optim.lr_scheduler import CosineAnnealingLR
+from transformers import get_linear_schedule_with_warmup
 import gc
 import argparse
 import json
@@ -222,6 +223,8 @@ def train(seed: int,
           start_checkpoint: str,
           whisper_config: dict,
           optimizer: str,
+          scheduler: str,
+          scheduler_params: dict,
           from_disk: bool,
           autoencoder_variant: str,
           autoencoder_config: dict
@@ -243,6 +246,9 @@ def train(seed: int,
         "activation_size": feat_dim,
         "train_folder": train_folder,
         "val_folder": val_folder,
+        "optimizer": optimizer,
+        "scheduler": scheduler,
+        "scheduler_params": scheduler_params,
     }
     assert autoencoder_variant in ["l1", "topk"], \
         f"Invalid autoencoder variant: {autoencoder_variant}, must be 'l1' or 'topk'"
@@ -275,7 +281,14 @@ def train(seed: int,
         raise ValueError(
             f"Invalid optimizer: {optimizer}, must be 'radam' or 'adam'")
 
-    scheduler = CosineAnnealingLR(optimizer, T_max=steps, eta_min=0)
+    if scheduler == "cosine":
+        scheduler = CosineAnnealingLR(optimizer, T_max=steps, eta_min=0)
+    elif scheduler == "linear":
+        scheduler = get_linear_schedule_with_warmup(
+            optimizer, num_warmup_steps=scheduler_params["num_warmup_steps"], num_training_steps=steps)
+    else:
+        raise ValueError(
+            f"Invalid scheduler: {scheduler}, must be 'cosine' or 'linear'")
 
     state = {
         "model": model,

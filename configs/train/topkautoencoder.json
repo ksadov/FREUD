@@ -26,6 +26,10 @@
   "save_every": 1000,
   "val_every": 100,
   "optimizer": "adam",
+  "scheduler": "linear",
+  "scheduler_params": {
+    "num_warmup_steps": 1000
+  },
   "start_checkpoint": null,
   "from_disk": true
 }

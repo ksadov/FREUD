@@ -23,6 +23,8 @@
   "save_every": 1000,
   "val_every": 100,
   "optimizer": "radam",
+  "scheduler": "cosine",
+  "scheduler_params": {},
   "start_checkpoint": null,
   "from_disk": true
 }
