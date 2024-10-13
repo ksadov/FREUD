@@ -7,11 +7,12 @@ from tqdm import tqdm
 from typing import Optional
 from npy_append_array import NpyAppendArray
 from src.models.l1autoencoder import L1EncoderOutput
+from src.models.topkautoencoder import TopKEncoderOutput
 from src.dataset.activations import FlyActivationDataLoader
 
 
-def save_l1_encodings_for_memory_mapping(metadata_file: Path, tensor_file: Path, encodings: L1EncoderOutput,
-                                         filenames: list[str]):
+def save_activation_tensors_for_memory_mapping(metadata_file: Path, tensor_file: Path, activations: list[torch.Tensor],
+                                               filenames: list[str]):
     """
     Append activations to a memory-mappable file and update metadata
 
@@ -21,7 +22,6 @@ def save_l1_encodings_for_memory_mapping(metadata_file: Path, tensor_file: Path,
     :param filenames: List of filenames corresponding to the activations
     :requires: len(activations) == len(filenames)
     """
-    activations = encodings.latent
     assert len(activations) == len(
         filenames), "Number of activations and filenames must match"
     # Load existing metadata if it exists
@@ -45,6 +45,55 @@ def save_l1_encodings_for_memory_mapping(metadata_file: Path, tensor_file: Path,
     # Append tensor data to the file using NpyAppendArray
     with NpyAppendArray(tensor_file) as npaa:
         for tensor in new_tensors:
+            # Reshape to 2D array for appending
+            npaa.append(tensor.reshape(1, -1))
+
+
+def save_indexed_features_for_memory_mapping(metadata_file: Path, feature_index_file: Path, activation_value_file: Path,
+                                             activation_values: torch.tensor, activation_indices: torch.tensor,
+                                             filenames: list[str]):
+    """
+    Append activations to a memory-mappable file and update metadata
+
+    :param metadata_file: Path to the metadata file
+    :param feature_index_file: Path to the feature index file
+    :param activation_value_file: Path to the activation value file
+    :param activation_values: tensor of activation values
+    :param activation_indices: tensor of feature indices corresponding to the activation values
+    :param filenames: List of filenames corresponding to the activations
+    :requires: len(activations) == len(filenames)
+    """
+    assert len(activation_values) == len(
+        filenames), "Number of activations and filenames must match"
+    assert len(activation_indices) == len(
+        filenames), "Number of activations and filenames must match"
+    # Load existing metadata if it exists
+    if os.path.exists(metadata_file):
+        with open(metadata_file, 'r') as f:
+            metadata = json.load(f)
+    else:
+        metadata = {'filenames': [], 'tensor_shapes': []}
+
+    # Prepare new data and update metadata
+    new_activation_values = []
+    new_feature_indices = []
+    for filename, value, index in zip(filenames, activation_values, activation_indices):
+        metadata['filenames'].append(filename)
+        metadata['tensor_shapes'].append(list(value.shape))
+        new_activation_values.append(value.cpu().numpy())
+        new_feature_indices.append(index.cpu().numpy())
+
+    # Save updated metadata
+    with open(metadata_file, 'w') as f:
+        json.dump(metadata, f)
+
+    # Append tensor data to the file using NpyAppendArray
+    with NpyAppendArray(activation_value_file) as npaa:
+        for tensor in new_activation_values:
+            # Reshape to 2D array for appending
+            npaa.append(tensor.reshape(1, -1))
+    with NpyAppendArray(feature_index_file) as npaa:
+        for tensor in new_feature_indices:
             # Reshape to 2D array for appending
             npaa.append(tensor.reshape(1, -1))
 
@@ -82,24 +131,37 @@ def get_activations(
         max_workers,
         collect_max
     )
-
     metadata_file = os.path.join(out_folder, f"{layer_name}_metadata.json")
-    tensor_file = os.path.join(out_folder, f"{layer_name}_tensors.npy")
-    # delete existing metadata and tensor files
     if os.path.exists(metadata_file):
         os.remove(metadata_file)
-    if os.path.exists(tensor_file):
-        os.remove(tensor_file)
+    if dataloader.activation_type in ["whisper", "l1"]:
+        tensor_file = os.path.join(out_folder, f"{layer_name}_tensors.npy")
+        if os.path.exists(tensor_file):
+            os.remove(tensor_file)
+    else:
+        activation_value_file = os.path.join(
+            out_folder, f"{layer_name}_activation_values.npy")
+        feature_index_file = os.path.join(
+            out_folder, f"{layer_name}_feature_indices.npy")
+        if os.path.exists(activation_value_file):
+            os.remove(activation_value_file)
+        if os.path.exists(feature_index_file):
+            os.remove(feature_index_file)
     # create directory for the output
     os.makedirs(out_folder, exist_ok=True)
     with torch.no_grad():
         for batch in tqdm(dataloader):
-            encoded, global_filenames = batch
-            if isinstance(encoded, L1EncoderOutput):
-                save_l1_encodings_for_memory_mapping(
-                    metadata_file, tensor_file, encoded, global_filenames)
+            output, global_filenames = batch
+            if isinstance(output, L1EncoderOutput):
+                save_activation_tensors_for_memory_mapping(
+                    metadata_file, tensor_file, output.latent, global_filenames)
+            elif isinstance(output, TopKEncoderOutput):
+                save_indexed_features_for_memory_mapping(
+                    metadata_file, feature_index_file, activation_value_file, output.top_acts,
+                    output.top_indices, global_filenames)
             else:
-                raise ValueError("Only L1AutoEncoder is supported for now")
+                save_activation_tensors_for_memory_mapping(
+                    metadata_file, tensor_file, output, global_filenames)
 
 
 def main():

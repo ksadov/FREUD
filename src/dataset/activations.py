@@ -40,6 +40,12 @@ class FlyActivationDataLoader(torch.utils.data.DataLoader):
         self.whisper_cache.model.eval()
         self.sae_model = init_sae_from_checkpoint(
             sae_checkpoint) if sae_checkpoint else None
+        if self.sae_model is None:
+            self.activation_type = "whisper"
+        elif isinstance(self.sae_model, L1AutoEncoder):
+            self.activation_type = "l1"
+        else:
+            self.activation_type = "topk"
         self._dataset = AudioDataset(data_path, device)
         if subset_size:
             self._dataset = torch.utils.data.Subset(
@@ -59,9 +65,12 @@ class FlyActivationDataLoader(torch.utils.data.DataLoader):
         with torch.no_grad():
             self.whisper_cache.forward(mels)
             first_activation = self.whisper_cache.activations[0]
-            if self.sae_model:
+            if self.activation_type == "l1":
                 encoded = self.sae_model.encode(first_activation)
                 return encoded.latent.squeeze().shape
+            elif self.activation_type == "topk":
+                encoded = self.sae_model.encode(first_activation)
+                return encoded.top_acts.squeeze().shape
             else:
                 return first_activation.squeeze().shape
 

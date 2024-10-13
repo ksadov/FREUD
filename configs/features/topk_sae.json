@@ -1,0 +1,11 @@
+{
+  "whisper_model": "tiny",
+  "sae_model": "runs/topkautoencoder/checkpoints/bestval.pth",
+  "layer_name": "encoder.blocks.2",
+  "batch_size": 160,
+  "data_path": "audio_data/librispeech/LibriSpeech/test-other",
+  "device": "cuda",
+  "out_folder": "activations/replicate_block_2_replicate_sae",
+  "dl_max_workers": 0,
+  "collect_max": null
+}
