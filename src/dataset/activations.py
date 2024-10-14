@@ -12,8 +12,8 @@ from src.models.topkautoencoder import TopKAutoEncoder
 from src.models.config import L1AutoEncoderConfig, TopKAutoEncoderConfig
 
 
-def init_sae_from_checkpoint(checkpoint: str) -> L1AutoEncoder | TopKAutoEncoder:
-    checkpoint = torch.load(checkpoint)
+def init_sae_from_checkpoint(checkpoint: str, device: Optional[str | torch.device] = None) -> L1AutoEncoder | TopKAutoEncoder:
+    checkpoint = torch.load(checkpoint, map_location=device)
     activation_size = checkpoint['hparams']['activation_size']
     if checkpoint['hparams']['autoencoder_variant'] == 'l1':
         cfg = L1AutoEncoderConfig.from_dict(
