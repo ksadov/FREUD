@@ -4,9 +4,16 @@ import argparse
 from flask import Flask, jsonify, request, send_file
 from flask_cors import CORS
 import json
+import soundfile as sf
+import io
+import numpy as np
 
-from src.dataset.activations import MemoryMappedActivationDataLoader, FlyActivationDataLoader
+from src.dataset.activations import MemoryMappedActivationDataLoader, FlyActivationDataLoader, init_sae_from_checkpoint
 from src.utils.activations import top_activations
+from src.scripts.analyze_audio import analyze_audio
+from src.models.hooked_model import init_cache, WhisperActivationCache
+from src.models.l1autoencoder import L1AutoEncoder
+from src.models.topkautoencoder import TopKAutoEncoder
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -15,9 +22,11 @@ CORS(app, resources={r"/*": {"origins": "*"}})
 top_fn = None
 n_features = None
 layer_name = None
+whisper_cache = None
+sae_model = None
 
 
-def get_gui_data(config: dict, from_disk: bool, files_to_search: Optional[int]) -> callable:
+def get_gui_data(config: dict, from_disk: bool, files_to_search: Optional[int]) -> tuple[callable, int, str, WhisperActivationCache, L1AutoEncoder | TopKAutoEncoder]:
     if from_disk:
         dataloader = MemoryMappedActivationDataLoader(
             config['out_folder'],
@@ -26,6 +35,8 @@ def get_gui_data(config: dict, from_disk: bool, files_to_search: Optional[int]) 
             dl_max_workers=config['dl_max_workers'],
             subset_size=files_to_search
         )
+        whisper_cache = init_cache(config['whisper_model'], config['layer_name'], config['device'])
+        sae_model = init_sae_from_checkpoint(config['sae_model'])
     else:
         dataloader = FlyActivationDataLoader(
             config['data_path'],
@@ -37,13 +48,15 @@ def get_gui_data(config: dict, from_disk: bool, files_to_search: Optional[int]) 
             dl_max_workers=config['dl_max_workers'],
             subset_size=files_to_search
         )
+        whisper_cache = dataloader.whisper_cache
+        sae_model = dataloader.sae_model
     activation_shape = dataloader.activation_shape
     n_features = activation_shape[-1]
     layer_name = config['layer_name']
     return (lambda neuron_idx, n_files, max_val, min_val, absolute_magnitude, return_max_per_file:
             top_activations(dataloader, neuron_idx, n_files, max_val,
                             min_val, absolute_magnitude, return_max_per_file),
-            n_features, layer_name)
+            n_features, layer_name, whisper_cache, sae_model)
 
 
 def get_top_activations(top_fn: callable,
@@ -66,9 +79,11 @@ def init_gui_data(config_path, from_disk, files_to_search):
     global top_fn
     global n_features
     global layer_name
+    global whisper_cache
+    global sae_model
     with open(config_path, 'r') as f:
         config = json.load(f)
-    top_fn, n_features, layer_name = get_gui_data(
+    top_fn, n_features, layer_name, whisper_cache, sae_model = get_gui_data(
         config, from_disk, files_to_search)
     print("GUI data initialized.")
 
@@ -102,6 +117,30 @@ def serve_audio(filename):
     # filename is global path to audio file
     global_fname = '/' + filename
     return send_file(global_fname, mimetype="audio/flac")
+
+@app.route('/analyze_audio', methods=['POST'])
+def upload_and_analyze_audio():
+    if 'audio' not in request.files:
+        return jsonify({"error": "No audio file provided"}), 400
+    
+    top_n = request.args.get('top_n', 32)
+    audio_file = request.files['audio']
+    if audio_file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    if audio_file:
+        # Read the audio file
+        audio_data, sample_rate = sf.read(io.BytesIO(audio_file.read()))
+
+        # Convert to numpy array if it's not already
+        audio_np = np.array(audio_data)
+
+        top_indices, top_activations = analyze_audio(audio_np, whisper_cache, sae_model, top_n)
+
+        # Return the result
+        return jsonify({"top_indices": top_indices, "top_activations": top_activations})
+
+    return jsonify({"error": "Failed to process audio file"}), 500
 
 
 if __name__ == '__main__':
