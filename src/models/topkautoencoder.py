@@ -93,7 +93,8 @@ class TopKAutoEncoder(nn.Module):
         y = eager_decode(top_indices, top_acts, self.W_dec.mT)
         return y + self.b_dec
 
-    def forward(self, x: Tensor, dead_mask: Tensor | None = None) -> TopKForwardOutput:
+    def forward(self, x: Tensor, dead_mask: Tensor | None = None, return_mse: bool = False) -> \
+            TopKForwardOutput | tuple[TopKForwardOutput, Tensor]:
         pre_acts = self.pre_acts(x)
 
         # Decode and compute residual
@@ -141,13 +142,16 @@ class TopKAutoEncoder(nn.Module):
         else:
             multi_topk_fvu = sae_out.new_tensor(0.0)
 
-        return TopKForwardOutput(
+        forward_output = TopKForwardOutput(
             sae_out,
             TopKEncoderOutput(top_acts, top_indices),
             fvu,
             auxk_loss * self.cfg.auxk_alpha,
             multi_topk_fvu,
         )
+        if return_mse:
+            return forward_output, e.pow(2).mean()
+        return forward_output
 
     @ torch.no_grad()
     def set_decoder_norm_to_unit_norm(self):

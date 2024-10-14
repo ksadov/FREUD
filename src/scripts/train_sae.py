@@ -79,6 +79,7 @@ def validate(
     subbed_transcripts = []
     base_transcripts = []
     base_filenames = []
+    mses = []
 
     dl_kwargs = {
         "shuffle": False,
@@ -97,7 +98,8 @@ def validate(
             activations, filenames = datapoints
             activations = activations.to(device)
             filenames = filenames[0]
-            out = model(activations)
+            out, mse = model(activations, return_mse=True)
+            mses.append(mse.item())
             if isinstance(out, L1ForwardOutput):
                 detached_encoded = torch.abs(
                     out.encoded.latent.detach()).squeeze()
@@ -133,7 +135,8 @@ def validate(
         "recon": np.array(losses_recon).mean() if losses_recon else None,
         "fvu": np.array(fvus).mean() if fvus else None,
         "auxk_loss": np.array(losses_auxk).mean() if losses_auxk else None,
-        "multi_topk_fvu": np.array(multi_topk_fvu).mean() if multi_topk_fvu else None
+        "multi_topk_fvu": np.array(multi_topk_fvu).mean() if multi_topk_fvu else None,
+        "mse": np.array(mses).mean()
     }
     return (losses_dict, subbed_transcripts, base_transcripts,
             base_filenames, encoded_mag_means, encoded_mag_stds)
@@ -385,10 +388,10 @@ def train(seed: int,
                 logged_base_transcripts = True
                 if isinstance(model, L1AutoEncoder):
                     print(
-                        f"{state['step']} validation, loss_recon={losses_dict['recon']}, loss_l1={losses_dict['l1']}")
+                        f"{state['step']} validation, loss_recon={losses_dict['recon']}, loss_l1={losses_dict['l1']}, mse={losses_dict['mse']}")
                 else:
                     print(
-                        f"{state['step']} validation, fvu={losses_dict['fvu']}, auxk_loss={losses_dict['auxk_loss']}, multi_topk_fvu={losses_dict['multi_topk_fvu']}")
+                        f"{state['step']} validation, fvu={losses_dict['fvu']}, auxk_loss={losses_dict['auxk_loss']}, multi_topk_fvu={losses_dict['multi_topk_fvu']}, mse={losses_dict['mse']}")
 
                 if isinstance(model, L1AutoEncoder):
                     tb_logger.add_scalar(
@@ -402,6 +405,8 @@ def train(seed: int,
                         "val/auxk_loss", losses_dict['auxk_loss'], state["step"])
                     tb_logger.add_scalar(
                         "val/multi_topk_fvu", losses_dict['multi_topk_fvu'], state["step"])
+                tb_logger.add_scalar(
+                    "val/mse", losses_dict['mse'], state["step"])
 
                 tb_logger.add_histogram(
                     "val/encoded/magnitude_means", np.array(encoded_mag_means), state["step"])

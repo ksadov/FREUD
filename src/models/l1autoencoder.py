@@ -71,9 +71,13 @@ class L1AutoEncoder(nn.Module):
         c = self.encoder(x @ self.decoder.weight + self.encoder_bias)
         return L1EncoderOutput(latent=c)
 
-    def forward(self, x: Float[Tensor, "bsz seq_len d_model"]):  # noqa: F821
+    def forward(self, x: Float[Tensor, "bsz seq_len d_model"], return_mse: bool = False):  # noqa: F821
         c = self.encode(x).latent
         x_hat = self.decoder(c)
         loss_l1 = torch.norm(c, 1, dim=2).mean()
         loss_recon = self.recon_alpha * mse_loss(x_hat, x, -1, "mean")
-        return L1ForwardOutput(sae_out=x_hat, encoded=L1EncoderOutput(c), l1_loss=loss_l1, reconstruction_loss=loss_recon)
+        forward_output = L1ForwardOutput(sae_out=x_hat, encoded=L1EncoderOutput(c), l1_loss=loss_l1,
+                                         reconstruction_loss=loss_recon)
+        if return_mse:
+            return forward_output, ((x_hat - x) ** 2).mean()
+        return forward_output
