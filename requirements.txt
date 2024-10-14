@@ -9,6 +9,7 @@ npy-append-array
 einops
 simple-parsing
 transformers
+soundfile
 # for the interactive GUI
 Flask
 Flask-CORS

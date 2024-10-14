@@ -110,6 +110,13 @@ def get_mels_from_audio_path(
         mels = log_mel_spectrogram(audio, device=device)
     return mels
 
+def get_mels_from_np_array(device, audio: np.ndarray):
+    audio = audio.astype(np.float32)
+    with torch.no_grad():
+        audio = pad_or_trim(audio.flatten())
+        mels = log_mel_spectrogram(audio, device=device)
+    return mels
+
 
 @lru_cache(maxsize=None)
 def mel_filters(device, n_mels: int = N_MELS) -> torch.Tensor:

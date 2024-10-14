@@ -2,15 +2,18 @@ import torch
 from typing import Optional
 import argparse
 from tqdm import tqdm
+import numpy as np
+import soundfile as sf
 
-from src.utils.audio_utils import get_mels_from_audio_path
+from src.utils.audio_utils import get_mels_from_np_array
 from src.models.hooked_model import WhisperActivationCache, init_cache, WhisperSubbedActivation, init_subbed
 from src.models.l1autoencoder import L1AutoEncoder, L1EncoderOutput
 from src.models.topkautoencoder import TopKAutoEncoder
 from src.utils.activations import activation_tensor_from_indexed
 from src.dataset.activations import init_sae_from_checkpoint
+from src.utils.constants import SAMPLE_RATE
 
-def manipulate_latent(audio_path: str, whisper_cache: WhisperActivationCache,
+def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationCache,
                   sae_model: Optional[L1AutoEncoder | TopKAutoEncoder], 
                   whisper_subbed: WhisperSubbedActivation, feat_idx: int, 
                   manipulation_factor: float, device: str) -> tuple[str, str, str, torch.Tensor, torch.Tensor]:
@@ -31,7 +34,7 @@ def manipulate_latent(audio_path: str, whisper_cache: WhisperActivationCache,
     - Original activation tensor
     - Substituted activation tensor
     """
-    mel = get_mels_from_audio_path(device, audio_path)
+    mel = get_mels_from_np_array(device, audio_array)
     baseline_result = whisper_cache.forward(mel)
     activations = whisper_cache.activations
     if sae_model:
@@ -64,7 +67,7 @@ def manipulate_latent(audio_path: str, whisper_cache: WhisperActivationCache,
     return baseline_result.text, manipulated_subbed_result.text, standard_subbed_result.text, activations, manipulated_decoded
 
 @torch.no_grad()
-def analyze_audio(audio_path: str, whisper_cache: WhisperActivationCache,
+def analyze_audio(audio_array: np.ndarray, whisper_cache: WhisperActivationCache,
                   sae_model: Optional[L1AutoEncoder | TopKAutoEncoder], 
                   top_n: int, device: str) -> tuple[list[int], list[float]]:
     """
@@ -77,7 +80,7 @@ def analyze_audio(audio_path: str, whisper_cache: WhisperActivationCache,
     :return: Tuple of top feature indices and their corresponding values
     """
 
-    mel = get_mels_from_audio_path(device, audio_path)
+    mel = get_mels_from_np_array(device, audio_array)
     whisper_cache.forward(mel)
     activations = whisper_cache.activations
     indexed_activations = False
@@ -144,16 +147,22 @@ def main():
     parser.add_argument("--device", type=str, default="cpu", help="Device to use")
     args = parser.parse_args()
 
+    audio_array, sr = sf.read(args.audio_path)
+    if sr != SAMPLE_RATE:
+        raise ValueError(f"Expected sample rate of {SAMPLE_RATE} but got {sr}")
+    
     whisper_cache, sae_model = init_analysis_models(args.whisper_model, args.sae_path, args.layer_to_cache, args.device)
     whisper_subbed = init_subbed(args.whisper_model, args.layer_to_cache, args.device)
-    #top = analyze_audio(args.audio_path, whisper_cache, sae_model, args.top_n, args.device)
-    #print(f"Top features: {top}")
-    before, after, standard, vec_before, vec_after = manipulate_latent(args.audio_path, whisper_cache, None, whisper_subbed, 0, 1.5, args.device)
+    top = analyze_audio(audio_array, whisper_cache, sae_model, args.top_n, args.device)
+    print(f"Top features: {top}")
+    """
+    before, after, standard, vec_before, vec_after = manipulate_latent(audio_array, whisper_cache, None, whisper_subbed, 0, 1.5, args.device)
     print(f"Before: {before}")
     print(f"After: {after}")
     print(f"Standard: {standard}")
     print(f"Before: {vec_before}")
     print(f"After: {vec_after}")
+    """
 
     
 
