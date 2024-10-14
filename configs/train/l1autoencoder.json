@@ -12,7 +12,7 @@
   "train_folder": "activations/replicate_block_2_train",
   "val_folder": "activations/replicate_block_2_dev",
   "device": "cuda",
-  "run_dir": "runs/l1autoencoder_new_dataloader",
+  "run_dir": "runs/l1autoencoder_baseline",
   "lr": 4e-4,
   "weight_decay": 0.0,
   "steps": 100000,
