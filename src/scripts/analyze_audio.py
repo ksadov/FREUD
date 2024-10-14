@@ -13,7 +13,7 @@ from src.dataset.activations import init_sae_from_checkpoint
 def manipulate_latent(audio_path: str, whisper_cache: WhisperActivationCache,
                   sae_model: Optional[L1AutoEncoder | TopKAutoEncoder], 
                   whisper_subbed: WhisperSubbedActivation, feat_idx: int, 
-                  manipulation_factor: float, device: str) -> tuple[str, str]:
+                  manipulation_factor: float, device: str) -> tuple[str, str, str, torch.Tensor, torch.Tensor]:
     """
     Given input audio, manipulate a model feature on the fly and return both the original whisper output and output 
     after substuting in the manipulated feature.
@@ -24,7 +24,12 @@ def manipulate_latent(audio_path: str, whisper_cache: WhisperActivationCache,
     :param whisper_subbed: Whisper model with a substituted activation
     :param feat_idx: Index of the feature to manipulate
     :param manipulation_factor: Factor to manipulate the feature by
-    :return: Tuple of original whisper output and output after substitution
+    :return: Tuple of
+    - Original whisper output
+    - Substituted whisper output
+    - Substituted whisper output with standard decoding
+    - Original activation tensor
+    - Substituted activation tensor
     """
     mel = get_mels_from_audio_path(device, audio_path)
     baseline_result = whisper_cache.forward(mel)
@@ -56,7 +61,7 @@ def manipulate_latent(audio_path: str, whisper_cache: WhisperActivationCache,
         standard_decoded = activations
     manipulated_subbed_result = whisper_subbed.forward(mel, manipulated_decoded)
     standard_subbed_result = whisper_subbed.forward(mel, standard_decoded)
-    return baseline_result.text, manipulated_subbed_result.text, standard_subbed_result.text
+    return baseline_result.text, manipulated_subbed_result.text, standard_subbed_result.text, activations, manipulated_decoded
 
 @torch.no_grad()
 def analyze_audio(audio_path: str, whisper_cache: WhisperActivationCache,
@@ -143,10 +148,13 @@ def main():
     whisper_subbed = init_subbed(args.whisper_model, args.layer_to_cache, args.device)
     #top = analyze_audio(args.audio_path, whisper_cache, sae_model, args.top_n, args.device)
     #print(f"Top features: {top}")
-    before, after, standard = manipulate_latent(args.audio_path, whisper_cache, None, whisper_subbed, 0, 1.5, args.device)
+    before, after, standard, vec_before, vec_after = manipulate_latent(args.audio_path, whisper_cache, None, whisper_subbed, 0, 1.5, args.device)
     print(f"Before: {before}")
     print(f"After: {after}")
     print(f"Standard: {standard}")
+    print(f"Before: {vec_before}")
+    print(f"After: {vec_after}")
+
     
 
 if __name__ == "__main__":
