@@ -16,7 +16,7 @@ from src.utils.constants import SAMPLE_RATE
 def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationCache,
                   sae_model: Optional[L1AutoEncoder | TopKAutoEncoder], 
                   whisper_subbed: WhisperSubbedActivation, feat_idx: int, 
-                  manipulation_factor: float, device: str) -> tuple[str, str, str, torch.Tensor, torch.Tensor]:
+                  manipulation_factor: float) -> tuple[str, str, str, torch.Tensor, torch.Tensor]:
     """
     Given input audio, manipulate a model feature on the fly and return both the original whisper output and output 
     after substuting in the manipulated feature.
@@ -34,7 +34,7 @@ def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationC
     - Original activation tensor
     - Substituted activation tensor
     """
-    mel = get_mels_from_np_array(device, audio_array)
+    mel = get_mels_from_np_array(whisper_cache.device, audio_array)
     baseline_result = whisper_cache.forward(mel)
     activations = whisper_cache.activations
     if sae_model:
@@ -69,7 +69,7 @@ def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationC
 @torch.no_grad()
 def analyze_audio(audio_array: np.ndarray, whisper_cache: WhisperActivationCache,
                   sae_model: Optional[L1AutoEncoder | TopKAutoEncoder], 
-                  top_n: int, device: str) -> tuple[list[int], list[float]]:
+                  top_n: int) -> tuple[list[int], list[float]]:
     """
     Given input audio, get the top features encoded by the whisper model and optionally the SAE model.
     
@@ -80,7 +80,7 @@ def analyze_audio(audio_array: np.ndarray, whisper_cache: WhisperActivationCache
     :return: Tuple of top feature indices and their corresponding values
     """
 
-    mel = get_mels_from_np_array(device, audio_array)
+    mel = get_mels_from_np_array(whisper_cache.device, audio_array)
     whisper_cache.forward(mel)
     activations = whisper_cache.activations
     indexed_activations = False
@@ -153,10 +153,10 @@ def main():
     
     whisper_cache, sae_model = init_analysis_models(args.whisper_model, args.sae_path, args.layer_to_cache, args.device)
     whisper_subbed = init_subbed(args.whisper_model, args.layer_to_cache, args.device)
-    top = analyze_audio(audio_array, whisper_cache, sae_model, args.top_n, args.device)
+    top = analyze_audio(audio_array, whisper_cache, sae_model, args.top_n)
     print(f"Top features: {top}")
     """
-    before, after, standard, vec_before, vec_after = manipulate_latent(audio_array, whisper_cache, None, whisper_subbed, 0, 1.5, args.device)
+    before, after, standard, vec_before, vec_after = manipulate_latent(audio_array, whisper_cache, None, whisper_subbed, 0, 1.5)
     print(f"Before: {before}")
     print(f"After: {after}")
     print(f"Standard: {standard}")
