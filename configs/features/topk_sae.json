@@ -5,7 +5,7 @@
   "batch_size": 160,
   "data_path": "audio_data/librispeech/LibriSpeech/test-other",
   "device": "cuda",
-  "out_folder": "activations/topk_sae",
+  "out_folder": "activations/topk_sae_new_dataloader",
   "dl_max_workers": 0,
   "collect_max": null
 }

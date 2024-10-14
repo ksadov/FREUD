@@ -67,7 +67,7 @@ class FlyActivationDataLoader(torch.utils.data.DataLoader):
                 return encoded.latent.squeeze().shape
             elif isinstance(self.sae_model, TopKAutoEncoder):
                 temporal_dim = self.sae_model.encode(
-                    first_activation).top_acts.squeeze.shape[0]
+                    first_activation).top_acts.squeeze().shape[0]
                 feature_dim = self.sae_model.n_dict_components
                 return torch.Size([temporal_dim, feature_dim])
             else:

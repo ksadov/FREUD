@@ -1,11 +1,11 @@
 {
   "whisper_model": "tiny",
-  "sae_model": "runs/l1autoencoder_checkpoint/checkpoints/bestval.pth",
+  "sae_model": "runs/l1autoencoder_new_dataloader/checkpoints/bestval.pth",
   "layer_name": "encoder.blocks.2",
   "batch_size": 160,
   "data_path": "audio_data/librispeech/LibriSpeech/test-other",
   "device": "cuda",
-  "out_folder": "activations/l1_sae",
+  "out_folder": "activations/l1autoencoder_new_dataloader",
   "dl_max_workers": 0,
   "collect_max": null
 }
