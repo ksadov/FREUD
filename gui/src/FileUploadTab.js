@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button } from 'react-bootstrap';
 import AudioPlayerWithActivation from './AudioPlayerWithActivation';
+import AudioRecorder from './AudioRecorder';
 
 const FileUploadTab = ({ API_BASE_URL }) => {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -9,6 +10,7 @@ const FileUploadTab = ({ API_BASE_URL }) => {
   const [uploadedFileResults, setUploadedFileResults] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isRecording, setIsRecording] = useState(false);
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
@@ -20,26 +22,32 @@ const FileUploadTab = ({ API_BASE_URL }) => {
     setTopN(parseInt(event.target.value, 10));
   };
 
+  const handleRecordingStart = () => {
+    setIsRecording(true);
+  };
+
+  const handleRecordingComplete = (blob) => {
+    setSelectedFile(new File([blob], "recorded_audio.wav", { type: "audio/wav" }));
+    setLocalAudioUrl(URL.createObjectURL(blob));
+    setIsRecording(false);
+  };
+
   const handleFileUpload = async () => {
     if (!selectedFile) {
-      setError('Please select a file to upload');
+      setError('Please select a file to upload or record audio');
       return;
     }
-
     setIsLoading(true);
     const formData = new FormData();
     formData.append('audio', selectedFile);
-
     try {
       const response = await fetch(`${API_BASE_URL}/analyze_audio?top_n=${topN}`, {
         method: 'POST',
         body: formData,
       });
-
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
-
       const data = await response.json();
       console.log('Uploaded file results:', data);
       setUploadedFileResults(data);
@@ -53,13 +61,21 @@ const FileUploadTab = ({ API_BASE_URL }) => {
 
   return (
     <div>
-      <h2 className="h4 mb-3">Upload and Analyze Audio</h2>
+      <h2 className="h4 mb-3">Upload or Record and Analyze Audio</h2>
       <div className="mb-3">
         <input
           type="file"
           onChange={handleFileChange}
           accept="audio/*"
           className="form-control"
+          disabled={isRecording}
+        />
+      </div>
+      <div className="mb-3">
+        <h3 className="h5">Or Record Audio</h3>
+        <AudioRecorder
+          onRecordingStart={handleRecordingStart}
+          onRecordingComplete={handleRecordingComplete}
         />
       </div>
       <div className="mb-3">
@@ -75,17 +91,15 @@ const FileUploadTab = ({ API_BASE_URL }) => {
       </div>
       <Button
         onClick={handleFileUpload}
-        disabled={!selectedFile || isLoading}
+        disabled={!selectedFile || isLoading || isRecording}
       >
         Upload and Analyze
       </Button>
-
       {isLoading && <p className="text-info">Loading...</p>}
       {error && <p className="text-danger">{error}</p>}
-
       {uploadedFileResults && localAudioUrl && (
         <div>
-          <h3 className="h5 my-3">Top {topN} Activations for Uploaded File</h3>
+          <h3 className="h5 my-3">Top {topN} Activations for Uploaded/Recorded File</h3>
           {uploadedFileResults.top_indices.map((neuronIndex, idx) => (
             <div key={neuronIndex} className="mb-4">
               <h4 className="h6">Neuron {neuronIndex}</h4>
