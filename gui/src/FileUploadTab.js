@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from 'react-bootstrap';
 import AudioPlayerWithActivation from './AudioPlayerWithActivation';
 import AudioRecorder from './AudioRecorder';
@@ -11,6 +11,7 @@ const FileUploadTab = ({ API_BASE_URL }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
+  const audioRef = useRef(null);
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
@@ -78,6 +79,12 @@ const FileUploadTab = ({ API_BASE_URL }) => {
           onRecordingComplete={handleRecordingComplete}
         />
       </div>
+      {localAudioUrl && (
+        <div className="mb-3">
+          <h3 className="h5">Preview Recorded/Uploaded Audio</h3>
+          <audio ref={audioRef} controls src={localAudioUrl} className="w-100" />
+        </div>
+      )}
       <div className="mb-3">
         <label htmlFor="topN" className="form-label">Top N Activations:</label>
         <input
