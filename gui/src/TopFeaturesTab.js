@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from 'react-bootstrap';
 import AudioPlayerWithActivation from './AudioPlayerWithActivation';
 
-const AnalyzeAudioTab = ({ API_BASE_URL, selectedFile, localAudioUrl, isLoading, setIsLoading, isRecording, setError }) => {
+const TopFeaturesTab = ({ API_BASE_URL, selectedFile, localAudioUrl, isLoading, setIsLoading, isRecording, setError }) => {
   const [topN, setTopN] = useState(32);
   const [uploadedFileResults, setUploadedFileResults] = useState(null);
 
@@ -19,7 +19,7 @@ const AnalyzeAudioTab = ({ API_BASE_URL, selectedFile, localAudioUrl, isLoading,
     const formData = new FormData();
     formData.append('audio', selectedFile);
     try {
-      const response = await fetch(`${API_BASE_URL}/analyze_audio?top_n=${topN}`, {
+      const response = await fetch(`${API_BASE_URL}/top_features?top_n=${topN}`, {
         method: 'POST',
         body: formData,
       });
@@ -31,8 +31,8 @@ const AnalyzeAudioTab = ({ API_BASE_URL, selectedFile, localAudioUrl, isLoading,
       setUploadedFileResults(data);
       setIsLoading(false);
     } catch (error) {
-      console.error('Error uploading and analyzing file:', error);
-      setError('Failed to upload and analyze file');
+      console.error('Error getting top features for file:', error);
+      setError('Failed to get top features for file');
       setIsLoading(false);
     }
   };
@@ -40,7 +40,7 @@ const AnalyzeAudioTab = ({ API_BASE_URL, selectedFile, localAudioUrl, isLoading,
   return (
     <div>
       <div className="mb-3">
-        <label htmlFor="topN" className="form-label">Top N Activations:</label>
+        <label htmlFor="topN" className="form-label">Max Number of Results:</label>
         <input
           id="topN"
           type="number"
@@ -55,7 +55,7 @@ const AnalyzeAudioTab = ({ API_BASE_URL, selectedFile, localAudioUrl, isLoading,
         disabled={!selectedFile || isLoading || isRecording}
         className="mb-3"
       >
-        Analyze Audio
+        Get Top Features
       </Button>
       {uploadedFileResults && localAudioUrl && (
         <div>
@@ -77,4 +77,4 @@ const AnalyzeAudioTab = ({ API_BASE_URL, selectedFile, localAudioUrl, isLoading,
   );
 };
 
-export default AnalyzeAudioTab;
+export default TopFeaturesTab;

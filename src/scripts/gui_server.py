@@ -114,8 +114,8 @@ def process_uploaded_audio(request):
 
     return np.array(audio)
 
-@app.route('/analyze_audio', methods=['POST'])
-def upload_and_analyze_audio():
+@app.route('/top_features', methods=['POST'])
+def upload_and_get_top_features():
     try:
         audio_np = process_uploaded_audio(request)
     except ValueError as e:

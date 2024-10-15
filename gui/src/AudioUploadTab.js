@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Button, Nav, Tab } from 'react-bootstrap';
 import AudioRecorder from './AudioRecorder';
-import AnalyzeAudioTab from './AnalyzeAudioTab';
+import TopFeaturesTab from './TopFeaturesTab';
 import ManipulateFeatureTab from './ManipulateFeatureTab';
 
 const AudioUploadTab = ({ API_BASE_URL }) => {
@@ -78,18 +78,18 @@ const AudioUploadTab = ({ API_BASE_URL }) => {
         </div>
       )}
       <div className="border border-2 rounded p-2">
-        <Tab.Container id="analysis-tabs" defaultActiveKey="analyze">
+        <Tab.Container id="analysis-tabs" defaultActiveKey="topfeatures">
           <Nav variant="tabs" className="mb-3">
             <Nav.Item>
-              <Nav.Link eventKey="analyze">Analyze Audio</Nav.Link>
+              <Nav.Link eventKey="topfeatures">Top Features</Nav.Link>
             </Nav.Item>
             <Nav.Item>
               <Nav.Link eventKey="manipulate">Manipulate Feature</Nav.Link>
             </Nav.Item>
           </Nav>
           <Tab.Content>
-            <Tab.Pane eventKey="analyze">
-              <AnalyzeAudioTab
+            <Tab.Pane eventKey="topfeatures">
+              <TopFeaturesTab
                 API_BASE_URL={API_BASE_URL}
                 selectedFile={selectedFile}
                 localAudioUrl={localAudioUrl}

@@ -105,7 +105,7 @@ const ActivationSearchTab = ({ isServerReady, nFeatures, API_BASE_URL }) => {
           />
         </div>
         <div className="mb-3">
-          <label htmlFor="nResults" className="form-label">Number of Results:</label>
+          <label htmlFor="nResults" className="form-label">Max Number of Results:</label>
           <input
             id="nResults"
             type="number"
