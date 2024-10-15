@@ -21,32 +21,32 @@ def trim_activation(audio_fname: str, activation: torch.Tensor) -> torch.Tensor:
     return activation[:n_frames]
 
 
-def activation_tensor_from_indexed(activation_values: torch.Tensor, activation_indices: torch.Tensor, neuron_idx: int) -> torch.Tensor:
+def activation_tensor_from_indexed(activation_values: torch.Tensor, activation_indices: torch.Tensor, feature_idx: int) -> torch.Tensor:
     """
     Convert an indexed activation tensor to a dense tensor
     """
     act = torch.zeros(len(activation_indices), activation_indices.shape[1])
     for i, top_indices_per_file in enumerate(activation_indices):
-        neuron_act = torch.zeros(len(top_indices_per_file))
+        feature_act = torch.zeros(len(top_indices_per_file))
         for j, top_indices_per_timestep in enumerate(top_indices_per_file):
-            if neuron_idx in top_indices_per_timestep:
-                index_of_neuron = (top_indices_per_timestep == neuron_idx).nonzero(
+            if feature_idx in top_indices_per_timestep:
+                index_of_feature = (top_indices_per_timestep == feature_idx).nonzero(
                 ).item()
-                neuron_act[j] = activation_values[i][j][index_of_neuron]
-        act[i] = neuron_act
+                feature_act[j] = activation_values[i][j][index_of_feature]
+        act[i] = feature_act
     return act
 
 
 @torch.no_grad()
-def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivationDataLoader, neuron_idx: int,
+def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivationDataLoader, feature_idx: int,
                     n_files: int, max_val: Optional[float], min_val: Optional[float],
                     absolute_magnitude: bool, return_max_per_file: bool) -> \
         tuple[list[tuple[str, torch.Tensor, float, float]], list[float], Optional[list[float]]]:
     """
-    Given an activation dataloader, return the n files that activate a given neuron the most within an optional range of values.
+    Given an activation dataloader, return the n files that activate a given feature the most within an optional range of values.
 
     :param dataloader: MemoryMappedActivationDataLoader | FlyActivationDataLoader
-    :param neuron_idx: index of the neuron to search for
+    :param feature_idx: index of the feature to search for
     :param n_files: number of files to return
     :param max_val: maximum activation value to consider, or None
     :param min_val: minimum activation value to consider, or None
@@ -68,11 +68,11 @@ def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivation
     for batch in tqdm(dataloader):
         if dataloader.activation_type == "tensor":
             act_batch, audio_files = batch
-            act = act_batch[:, :, neuron_idx]
+            act = act_batch[:, :, feature_idx]
         else:
             act_batch, indexes, audio_files = batch
             act = activation_tensor_from_indexed(
-                act_batch, indexes, neuron_idx)
+                act_batch, indexes, feature_idx)
         for audio_file, act in zip(audio_files, act):
             trimmed_activation = trim_activation(audio_file, act)
             if absolute_magnitude:

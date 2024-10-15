@@ -55,13 +55,13 @@ def get_gui_data(config: dict, from_disk: bool, files_to_search: Optional[int]) 
     activation_shape = dataloader.activation_shape
     n_features = activation_shape[-1]
     layer_name = config['layer_name']
-    return (lambda neuron_idx, n_files, max_val, min_val, absolute_magnitude, return_max_per_file:
-            top_activations(dataloader, neuron_idx, n_files, max_val,
+    return (lambda feature_idx, n_files, max_val, min_val, absolute_magnitude, return_max_per_file:
+            top_activations(dataloader, feature_idx, n_files, max_val,
                             min_val, absolute_magnitude, return_max_per_file),
             n_features, layer_name, whisper_cache, sae_model, whisper_subbed)
 
-def get_top_activations(top_fn: Callable, neuron_idx: int, n_files: int, max_val: Optional[float], min_val: Optional[float], absolute_magnitude: bool, return_max_per_file: bool) -> Tuple[list[str], list[torch.Tensor], list[float]]:
-    top, max_per_file = top_fn(neuron_idx, n_files, max_val, min_val, absolute_magnitude, return_max_per_file)
+def get_top_activations(top_fn: Callable, feature_idx: int, n_files: int, max_val: Optional[float], min_val: Optional[float], absolute_magnitude: bool, return_max_per_file: bool) -> Tuple[list[str], list[torch.Tensor], list[float]]:
+    top, max_per_file = top_fn(feature_idx, n_files, max_val, min_val, absolute_magnitude, return_max_per_file)
     top_files = [x[0] for x in top]
     activations = [x[1] for x in top]
     print("Got top activations.")
@@ -84,7 +84,7 @@ def status():
 @app.route('/top_files', methods=['GET'])
 def get_top_files():
     args = {
-        'neuron_idx': int(request.args.get('neuron_idx', 0)),
+        'feature_idx': int(request.args.get('feature_idx', 0)),
         'n_files': int(request.args.get('n_files', 10)),
         'max_val': float(request.args.get('max_val')) if request.args.get('max_val') else None,
         'min_val': float(request.args.get('min_val')) if request.args.get('min_val') else None,

@@ -4,7 +4,7 @@ import AudioPlayerWithActivation from './AudioPlayerWithActivation';
 import Plot from 'react-plotly.js';
 
 const ActivationSearchTab = ({ isServerReady, nFeatures, API_BASE_URL }) => {
-  const [neuronIdx, setNeuronIdx] = useState('');
+  const [featureIdx, setFeatureIdx] = useState('');
   const [nResults, setNResults] = useState(20);
   const [maxVal, setMaxVal] = useState('');
   const [minVal, setMinVal] = useState('');
@@ -15,8 +15,8 @@ const ActivationSearchTab = ({ isServerReady, nFeatures, API_BASE_URL }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleNeuronChange = (event) => {
-    setNeuronIdx(event.target.value);
+  const handleFeatureChange = (event) => {
+    setFeatureIdx(event.target.value);
   };
 
   const handleNResultsChange = (event) => {
@@ -37,19 +37,19 @@ const ActivationSearchTab = ({ isServerReady, nFeatures, API_BASE_URL }) => {
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    if (neuronIdx !== '') {
-      const idx = parseInt(neuronIdx, 10);
+    if (featureIdx !== '') {
+      const idx = parseInt(featureIdx, 10);
       if (!isNaN(idx) && idx >= 0 && idx < nFeatures) {
         fetchTopFiles(idx, nResults);
       } else {
-        setError(`Please enter a valid neuron index between 0 and ${nFeatures - 1}`);
+        setError(`Please enter a valid feature index between 0 and ${nFeatures - 1}`);
       }
     }
   };
 
   const fetchTopFiles = (idx, nResults) => {
     setIsLoading(true);
-    let url = `${API_BASE_URL}/top_files?neuron_idx=${idx}&n_files=${nResults}`;
+    let url = `${API_BASE_URL}/top_files?feature_idx=${idx}&n_files=${nResults}`;
     if (maxVal !== '') {
       const maxValFloat = parseFloat(maxVal);
       if (!isNaN(maxValFloat)) {
@@ -92,12 +92,12 @@ const ActivationSearchTab = ({ isServerReady, nFeatures, API_BASE_URL }) => {
     <>
       <form onSubmit={handleSubmit} className="mb-4">
         <div className="mb-3">
-          <label htmlFor="neuronIdx" className="form-label">Neuron Index:</label>
+          <label htmlFor="featureIdx" className="form-label">Feature Index:</label>
           <input
-            id="neuronIdx"
+            id="featureIdx"
             type="number"
-            value={neuronIdx}
-            onChange={handleNeuronChange}
+            value={featureIdx}
+            onChange={handleFeatureChange}
             className="form-control"
             min="0"
             max={nFeatures - 1}
