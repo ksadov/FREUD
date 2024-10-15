@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import Button from 'react-bootstrap/Button';
+import { Tabs, Tab, Button } from 'react-bootstrap';
 import AudioPlayerWithActivation from './AudioPlayerWithActivation';
 import Plot from 'react-plotly.js';
 
@@ -23,7 +23,7 @@ const ActivationDisplay = () => {
   const [topN, setTopN] = useState(32);
   const [uploadedFileResults, setUploadedFileResults] = useState(null);
 
-  const [activeView, setActiveView] = useState('neuronSearch');
+  const [activeKey, setActiveKey] = useState('neuronSearch');
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/status`)
@@ -153,90 +153,79 @@ const ActivationDisplay = () => {
     }
   };
 
-  const handleViewToggle = (view) => {
-    setActiveView(view);
+  const handleTabSelect = (key) => {
+    setActiveKey(key);
   };
 
   return (
     <div className="w-full max-w-3xl mx-auto px-4">
       <h1 className="text-2xl font-bold m-4">{layerName}</h1>
-      {error && <p className="text-red-500">{error}</p>}
+      {error && <p className="text-danger">{error}</p>}
 
-      {/* View toggle buttons */}
-      <div className="mb-4 flex justify-center">
-        <Button
-          onClick={() => handleViewToggle('neuronSearch')}
-          className={`px-4 py-2 mr-2 ${activeView === 'neuronSearch' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-        >
-          Neuron Search
-        </Button>
-        <Button
-          onClick={() => handleViewToggle('fileUpload')}
-          className={`px-4 py-2 ${activeView === 'fileUpload' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
-        >
-          File Upload
-        </Button>
-      </div>
-
-      {activeView === 'neuronSearch' && (
-        <>
+      <Tabs
+        activeKey={activeKey}
+        onSelect={handleTabSelect}
+        className="mb-3"
+      >
+        <Tab eventKey="neuronSearch" title="Neuron Search">
           {/* Neuron search form */}
           <form onSubmit={handleSubmit} className="mb-4">
-            <div className="mb-2">
-              <label htmlFor="neuronIdx" className="mx-2">Neuron Index:</label>
+            <div className="mb-3">
+              <label htmlFor="neuronIdx" className="form-label">Neuron Index:</label>
               <input
                 id="neuronIdx"
                 type="number"
                 value={neuronIdx}
                 onChange={handleNeuronChange}
-                className="px-2 py-1 border rounded"
+                className="form-control"
                 min="0"
                 max={nFeatures - 1}
                 disabled={isLoading || !isServerReady || !!error}
               />
             </div>
-            <div className="mb-2">
-              <label htmlFor="maxVal" className="mx-2">Max Activation Value (optional):</label>
+            <div className="mb-3">
+              <label htmlFor="maxVal" className="form-label">Max Activation Value (optional):</label>
               <input
                 id="maxVal"
                 type="number"
                 value={maxVal}
                 onChange={handleMaxValChange}
-                className="px-2 py-1 border rounded"
+                className="form-control"
                 step="any"
                 disabled={isLoading || !isServerReady || !!error}
               />
             </div>
-            <div className="mb-2">
-              <label htmlFor="minVal" className="mx-2">Min Activation Value (optional):</label>
+            <div className="mb-3">
+              <label htmlFor="minVal" className="form-label">Min Activation Value (optional):</label>
               <input
                 id="minVal"
                 type="number"
                 value={minVal}
                 onChange={handleMinValChange}
-                className="px-2 py-1 border rounded"
+                className="form-control"
                 step="any"
                 disabled={isLoading || !isServerReady || !!error}
               />
             </div>
-            <div className="mb-2">
-              <label htmlFor="useAbs" className="mx-2">Use Absolute Value:</label>
+            <div className="mb-3 form-check">
               <input
                 id="useAbs"
                 type="checkbox"
                 checked={useAbs}
                 onChange={handleAbsChange}
+                className="form-check-input"
                 disabled={isLoading || !isServerReady || !!error}
               />
+              <label htmlFor="useAbs" className="form-check-label">Use Absolute Value</label>
             </div>
             <Button
               type="submit"
-              className="px-4 py-2"
               disabled={isLoading || !isServerReady || !!error}
             >
               Update
             </Button>
           </form>
+
           {/* Histogram plot */}
           {maxPerFile.length > 0 && (
             <Plot
@@ -268,34 +257,33 @@ const ActivationDisplay = () => {
               activations={activations[index] || []}
             />
           ))}
-        </>
-      )}
+        </Tab>
 
-      {activeView === 'fileUpload' && (
-        <>
+        <Tab eventKey="fileUpload" title="File Upload">
           {/* File upload section */}
           <div className="mb-4">
-            <h2 className="text-xl font-semibold mb-2">Upload and Analyze Audio</h2>
-            <input
-              type="file"
-              onChange={handleFileChange}
-              accept="audio/*"
-              className="mb-2"
-            />
-            <div className="mb-2">
-              <label htmlFor="topN" className="mr-2">Top N Activations:</label>
+            <h2 className="h4 mb-3">Upload and Analyze Audio</h2>
+            <div className="mb-3">
+              <input
+                type="file"
+                onChange={handleFileChange}
+                accept="audio/*"
+                className="form-control"
+              />
+            </div>
+            <div className="mb-3">
+              <label htmlFor="topN" className="form-label">Top N Activations:</label>
               <input
                 id="topN"
                 type="number"
                 value={topN}
                 onChange={handleTopNChange}
-                className="px-2 py-1 border rounded"
+                className="form-control"
                 min="1"
               />
             </div>
             <Button
               onClick={handleFileUpload}
-              className="px-4 py-2"
               disabled={!selectedFile || isLoading}
             >
               Upload and Analyze
@@ -305,10 +293,10 @@ const ActivationDisplay = () => {
           {/* Display for uploaded file activations */}
           {uploadedFileResults && localAudioUrl && (
             <div>
-              <h3 className="text-lg font-semibold mb-2">Top {topN} Activations for Uploaded File</h3>
+              <h3 className="h5 mb-3">Top {topN} Activations for Uploaded File</h3>
               {uploadedFileResults.top_indices.map((neuronIndex, idx) => (
                 <div key={neuronIndex} className="mb-4">
-                  <h4 className="text-md font-semibold">Neuron {neuronIndex}</h4>
+                  <h4 className="h6">Neuron {neuronIndex}</h4>
                   <AudioPlayerWithActivation
                     audioFile={localAudioUrl}
                     activations={uploadedFileResults.top_activations[idx]}
@@ -319,11 +307,11 @@ const ActivationDisplay = () => {
               ))}
             </div>
           )}
-        </>
-      )}
+        </Tab>
+      </Tabs>
 
-      {isLoading && <p>Loading...</p>}
-      {!isServerReady && <p>Waiting for server...</p>}
+      {isLoading && <p className="text-info">Loading...</p>}
+      {!isServerReady && <p className="text-warning">Waiting for server...</p>}
     </div>
   );
 };
