@@ -9,7 +9,6 @@ from functools import lru_cache
 
 from src.utils.constants import SAMPLE_RATE, N_FFT, HOP_LENGTH, N_MELS, N_SAMPLES
 
-
 def is_audio_file(file: str) -> bool:
     """
     Check if the file is an audio file based on the extension

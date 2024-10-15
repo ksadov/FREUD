@@ -13,6 +13,7 @@ from src.utils.activations import top_activations, top_activations_for_audio, ma
 from src.models.hooked_model import init_cache, WhisperActivationCache, init_subbed, WhisperSubbedActivation
 from src.models.l1autoencoder import L1AutoEncoder
 from src.models.topkautoencoder import TopKAutoEncoder
+from src.utils.constants import SAMPLE_RATE
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -97,31 +98,41 @@ def get_top_files():
 def serve_audio(filename):
     return send_file(f'/{filename}', mimetype="audio/flac")
 
-@app.route('/analyze_audio', methods=['POST'])
-def upload_and_analyze_audio():
+def process_uploaded_audio(request):
     if 'audio' not in request.files:
-        return jsonify({"error": "No audio file provided"}), 400
+        raise ValueError("No audio file provided")
     
     audio_file = request.files['audio']
     if audio_file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
+        raise ValueError("No selected file")
+
+    audio, sr = sf.read(io.BytesIO(audio_file.read()))
+    if sr != SAMPLE_RATE:
+        # resample to 16 kHz
+        resampled_len = int(len(audio) * SAMPLE_RATE / sr)
+        audio = np.interp(np.linspace(0, len(audio) - 1, resampled_len), np.arange(len(audio)), audio)
+
+    return np.array(audio)
+
+@app.route('/analyze_audio', methods=['POST'])
+def upload_and_analyze_audio():
+    try:
+        audio_np = process_uploaded_audio(request)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
 
     top_n = int(request.args.get('top_n', 32))
-    audio_np = np.array(sf.read(io.BytesIO(audio_file.read()))[0])
     
     top_indices, top_activations = top_activations_for_audio(audio_np, GlobalState.whisper_cache, GlobalState.sae_model, top_n)
     return jsonify({"top_indices": top_indices, "top_activations": [x.tolist() for x in top_activations]})
 
 @app.route('/manipulate_feature', methods=['POST'])
 def upload_and_manipulate_audio():
-    if 'audio' not in request.files:
-        return jsonify({"error": "No audio file provided"}), 400
-    
-    audio_file = request.files['audio']
-    if audio_file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
+    try:
+        audio_np = process_uploaded_audio(request)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
 
-    audio_np = np.array(sf.read(io.BytesIO(audio_file.read()))[0])
     feat_idx = int(request.args.get('feat_idx', 0))
     manipulation_factor = float(request.args.get('manipulation_factor', 1.5))
 

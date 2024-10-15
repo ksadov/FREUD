@@ -107,11 +107,12 @@ def top_activations_for_audio(audio_array: np.ndarray, whisper_cache: WhisperAct
     """
     Given input audio, get the top features encoded by the whisper model and optionally the SAE model.
     
-    :param audio: Audio file path
+    :param audio_array: array of audio samples
     :param whisper_model: Whisper model
     :param sae_model: SAE model
     :param top_n: Number of top features to return
     :return: Tuple of top feature indices and their corresponding values
+    :requires: audio_array must be sampled at 16kHz
     """
 
     mel = get_mels_from_np_array(whisper_cache.device, audio_array)
@@ -163,7 +164,7 @@ def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationC
     Given input audio, manipulate a model feature on the fly and return both the original whisper output and output 
     after substuting in the manipulated feature.
 
-    :param audio: Audio file path
+    :param audio: Audio array
     :param whisper_model: Whisper model
     :param sae_model: SAE model
     :param whisper_subbed: Whisper model with a substituted activation
@@ -175,6 +176,7 @@ def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationC
     - Substituted whisper output without manipulation
     - Substituted activation tensor without manipulation
     - Substituted activation tensor with manipulation
+    :requires: audio_array must be sampled at 16kHz
     """
     mel = get_mels_from_np_array(whisper_cache.device, audio_array)
     baseline_result = whisper_cache.forward(mel)
