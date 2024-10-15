@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Form } from 'react-bootstrap';
+import { Button, Form, Row, Col } from 'react-bootstrap';
 import AudioPlayerWithActivation from './AudioPlayerWithActivation';
 
 const ManipulateFeatureTab = ({ API_BASE_URL, selectedFile, localAudioUrl, isLoading, setIsLoading, isRecording, setError }) => {
@@ -38,24 +38,30 @@ const ManipulateFeatureTab = ({ API_BASE_URL, selectedFile, localAudioUrl, isLoa
   return (
     <div>
       <Form onSubmit={handleManipulateFeature} className="mb-3">
-        <Form.Group className="mb-3">
-          <Form.Label>Feature Index</Form.Label>
-          <Form.Control
-            type="number"
-            value={featureIndex}
-            onChange={(e) => setFeatureIndex(parseInt(e.target.value))}
-            min="0"
-          />
-        </Form.Group>
-        <Form.Group className="mb-3">
-          <Form.Label>Ablation Factor</Form.Label>
-          <Form.Control
-            type="number"
-            value={ablationFactor}
-            onChange={(e) => setAblationFactor(parseFloat(e.target.value))}
-            step="0.1"
-          />
-        </Form.Group>
+        <Row>
+          <Col sm="auto">
+            <Form.Group className="mb-3">
+              <Form.Label>Feature Index</Form.Label>
+              <Form.Control
+                type="number"
+                value={featureIndex}
+                onChange={(e) => setFeatureIndex(parseInt(e.target.value))}
+                min="0"
+              />
+            </Form.Group>
+          </Col>
+          <Col sm="auto">
+            <Form.Group className="mb-3">
+              <Form.Label>Ablation Factor</Form.Label>
+              <Form.Control
+                type="number"
+                value={ablationFactor}
+                onChange={(e) => setAblationFactor(parseFloat(e.target.value))}
+                step="0.1"
+              />
+            </Form.Group>
+          </Col>
+        </Row>
         <Button type="submit" disabled={!selectedFile || isLoading || isRecording}>
           Manipulate Feature
         </Button>
