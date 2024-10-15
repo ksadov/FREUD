@@ -2,11 +2,14 @@ from typing import Optional
 import torch
 import torchaudio
 from tqdm import tqdm
+import numpy as np
 
 from src.utils.constants import SAMPLE_RATE, TIMESTEP_S
 from src.dataset.activations import MemoryMappedActivationDataLoader, FlyActivationDataLoader
-from src.models.l1autoencoder import L1EncoderOutput
-from src.models.topkautoencoder import TopKEncoderOutput
+from src.models.l1autoencoder import L1EncoderOutput, L1AutoEncoder
+from src.models.topkautoencoder import TopKAutoEncoder
+from src.models.hooked_model import WhisperActivationCache
+from src.utils.audio_utils import get_mels_from_np_array
 
 
 def trim_activation(audio_fname: str, activation: torch.Tensor) -> torch.Tensor:
@@ -96,3 +99,58 @@ def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivation
                 pq = pq[:n_files]
     print("Search complete.")
     return pq, None if not return_max_per_file else max_per_file
+
+@torch.no_grad()
+def top_activations_for_audio(audio_array: np.ndarray, whisper_cache: WhisperActivationCache,
+                  sae_model: Optional[L1AutoEncoder | TopKAutoEncoder], 
+                  top_n: int) -> tuple[list[int], list[float]]:
+    """
+    Given input audio, get the top features encoded by the whisper model and optionally the SAE model.
+    
+    :param audio: Audio file path
+    :param whisper_model: Whisper model
+    :param sae_model: SAE model
+    :param top_n: Number of top features to return
+    :return: Tuple of top feature indices and their corresponding values
+    """
+
+    mel = get_mels_from_np_array(whisper_cache.device, audio_array)
+    whisper_cache.forward(mel)
+    activations = whisper_cache.activations
+    indexed_activations = False
+    if sae_model:
+        output = sae_model.forward(activations)
+        if isinstance(output.encoded, L1EncoderOutput):
+            activations = output.encoded.latent
+        else:
+            top_acts = output.encoded.top_acts.squeeze()
+            top_indices = output.encoded.top_indices.squeeze()
+            indexed_activations = True
+    
+    if not indexed_activations:
+        activations = activations.squeeze()
+        top_k_results = activations.topk(top_n)
+        top_acts, top_indices = top_k_results.values, top_k_results.indices
+
+    unique_top_activations = []
+    for top_acts_at_t, top_indices_at_t in zip(top_acts, top_indices):
+        unique_top_activations.extend([(idx.item(), value.item()) for idx, value in zip(top_indices_at_t, top_acts_at_t)])
+        # sort by value
+        unique_top_activations = sorted(unique_top_activations, key=lambda x: x[1], reverse=True)
+        new_unique = []
+        for i, (idx, value) in enumerate(unique_top_activations):
+            if idx not in [idx for idx, _ in new_unique] and len(new_unique) < top_n:
+                new_unique.append((idx, value))
+        unique_top_activations = new_unique
+
+    # sanity check
+    max_activations = []
+    for i, v in unique_top_activations:
+        if indexed_activations:
+            act = activation_tensor_from_indexed(top_acts.unsqueeze(0), top_indices.unsqueeze(0), i)
+        else:
+            act = activations[:, i]
+        assert act.max() == v, f"Max activation at index {i} is {act.max()} but expected {v}"
+        max_activations.append(act)
+    activation_indexes = [i for i, _ in unique_top_activations]
+    return activation_indexes, max_activations

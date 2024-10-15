@@ -9,8 +9,7 @@ import io
 import numpy as np
 
 from src.dataset.activations import MemoryMappedActivationDataLoader, FlyActivationDataLoader, init_sae_from_checkpoint
-from src.utils.activations import top_activations
-from src.scripts.analyze_audio import analyze_audio
+from src.utils.activations import top_activations, top_activations_for_audio
 from src.models.hooked_model import init_cache, WhisperActivationCache
 from src.models.l1autoencoder import L1AutoEncoder
 from src.models.topkautoencoder import TopKAutoEncoder
@@ -136,7 +135,7 @@ def upload_and_analyze_audio():
         # Convert to numpy array if it's not already
         audio_np = np.array(audio_data)
 
-        top_indices, top_activations = analyze_audio(audio_np, whisper_cache, sae_model, top_n)
+        top_indices, top_activations = top_activations_for_audio(audio_np, whisper_cache, sae_model, top_n)
         top_activations = [x.tolist() for x in top_activations]
 
         # Return the result
