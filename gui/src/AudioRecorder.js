@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Button } from 'react-bootstrap';
 import encodeWAV from 'audiobuffer-to-wav';
 
-const AudioRecorder = ({ onRecordingStart, onRecordingComplete }) => {
+const AudioRecorder = ({ onRecordingStart, onRecordingComplete, disabled }) => {
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
@@ -61,7 +61,7 @@ const AudioRecorder = ({ onRecordingStart, onRecordingComplete }) => {
   return (
     <div>
       {!isRecording ? (
-        <Button onClick={startRecording}>Start Recording</Button>
+        <Button onClick={startRecording} disabled={disabled}>Start Recording</Button>
       ) : (
         <Button onClick={stopRecording} variant="danger">Stop Recording</Button>
       )}

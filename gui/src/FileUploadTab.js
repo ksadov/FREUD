@@ -11,12 +11,17 @@ const FileUploadTab = ({ API_BASE_URL }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [hasAudio, setHasAudio] = useState(false);
   const audioRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
-    setSelectedFile(file);
-    setLocalAudioUrl(URL.createObjectURL(file));
+    if (file) {
+      setSelectedFile(file);
+      setLocalAudioUrl(URL.createObjectURL(file));
+      setHasAudio(true);
+    }
   };
 
   const handleTopNChange = (event) => {
@@ -31,6 +36,22 @@ const FileUploadTab = ({ API_BASE_URL }) => {
     setSelectedFile(new File([blob], "recorded_audio.wav", { type: "audio/wav" }));
     setLocalAudioUrl(URL.createObjectURL(blob));
     setIsRecording(false);
+    setHasAudio(true);
+  };
+
+  const handleDiscardAudio = () => {
+    if (localAudioUrl) {
+      URL.revokeObjectURL(localAudioUrl);
+    }
+    setSelectedFile(null);
+    setLocalAudioUrl(null);
+    setHasAudio(false);
+    setUploadedFileResults(null);
+
+    // Reset the file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleFileUpload = async () => {
@@ -65,11 +86,12 @@ const FileUploadTab = ({ API_BASE_URL }) => {
       <h2 className="h4 mb-3">Upload or Record and Analyze Audio</h2>
       <div className="mb-3">
         <input
+          ref={fileInputRef}
           type="file"
           onChange={handleFileChange}
           accept="audio/*"
           className="form-control"
-          disabled={isRecording}
+          disabled={isRecording || hasAudio}
         />
       </div>
       <div className="mb-3">
@@ -77,12 +99,16 @@ const FileUploadTab = ({ API_BASE_URL }) => {
         <AudioRecorder
           onRecordingStart={handleRecordingStart}
           onRecordingComplete={handleRecordingComplete}
+          disabled={hasAudio}
         />
       </div>
       {localAudioUrl && (
         <div className="mb-3">
           <h3 className="h5">Preview Recorded/Uploaded Audio</h3>
-          <audio ref={audioRef} controls src={localAudioUrl} className="w-100" />
+          <div className="d-flex align-items-center">
+            <audio ref={audioRef} controls src={localAudioUrl} className="flex-grow-1 me-2" />
+            <Button variant="danger" onClick={handleDiscardAudio}>Discard</Button>
+          </div>
         </div>
       )}
       <div className="mb-3">
