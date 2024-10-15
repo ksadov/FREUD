@@ -15,7 +15,7 @@ from src.utils.constants import SAMPLE_RATE
 def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationCache,
                   sae_model: Optional[L1AutoEncoder | TopKAutoEncoder], 
                   whisper_subbed: WhisperSubbedActivation, feat_idx: int, 
-                  manipulation_factor: float) -> tuple[str, str, str, torch.Tensor, torch.Tensor]:
+                  manipulation_factor: float) -> tuple[Optional[str], str, str, torch.Tensor, torch.Tensor]:
     """
     Given input audio, manipulate a model feature on the fly and return both the original whisper output and output 
     after substuting in the manipulated feature.
@@ -27,9 +27,9 @@ def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationC
     :param feat_idx: Index of the feature to manipulate
     :param manipulation_factor: Factor to manipulate the feature by
     :return: Tuple of
-    - Original whisper output
-    - Substituted whisper output
-    - Substituted whisper output with standard decoding
+    - Original whisper output (if sae_model is not None)
+    - Substituted whisper output for manipulated feature
+    - Substituted whisper output without manipulation
     - Original activation tensor
     - Substituted activation tensor
     """
@@ -63,7 +63,8 @@ def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationC
         standard_decoded = activations
     manipulated_subbed_result = whisper_subbed.forward(mel, manipulated_decoded)
     standard_subbed_result = whisper_subbed.forward(mel, standard_decoded)
-    return baseline_result.text, manipulated_subbed_result.text, standard_subbed_result.text, activations, manipulated_decoded
+    baseline_text = None if sae_model is None else baseline_result.text
+    return baseline_text, manipulated_subbed_result.text, standard_subbed_result.text, activations, manipulated_decoded
 
 
 def init_analysis_models(whisper_model: str, sae_path: str, layer_to_cache: str, device: torch.device) -> \
@@ -89,7 +90,7 @@ def main():
     parser.add_argument("--whisper_model", type=str, help="name of whisper model", default="tiny")
     parser.add_argument("--layer_to_cache", type=str, help="Layer to cache", default="encoder.blocks.2")
     parser.add_argument("--sae_path", type=str, default="runs/topkautoencoder_baseline/checkpoints/bestval.pth", help="Path to SAE model")
-    parser.add_argument("--device", type=str, help="Device to run on", default="cuda:0")
+    parser.add_argument("--device", type=str, help="Device to run on", default="cpu")
     parser.add_argument("--feat_idx", type=int, help="Feature index to manipulate", default=0)
     parser.add_argument("--manipulation_factor", type=float, help="Factor to manipulate the feature by", default=1.5)
     args = parser.parse_args()
@@ -100,16 +101,13 @@ def main():
     
     whisper_cache, sae_model = init_analysis_models(args.whisper_model, args.sae_path, args.layer_to_cache, args.device)
     whisper_subbed = init_subbed(args.whisper_model, args.layer_to_cache, args.device)
-    before, after, standard, vec_before, vec_after = manipulate_latent(audio_array, whisper_cache, sae_model, 
+    before, after, standard, _, _ = manipulate_latent(audio_array, whisper_cache, sae_model, 
                                                                        whisper_subbed, args.feat_idx, 
                                                                        args.manipulation_factor)
-    print(f"Before: {before}")
-    print(f"After: {after}")
-    print(f"Standard: {standard}")
-    print(f"Before: {vec_before}")
-    print(f"After: {vec_after}")
-
-    
+    if sae_model:
+        print(f"Baseline Whisper transcript: {before}")
+    print(f"Decoded from manipulated latent: {after}")
+    print(f"Decoded from standard latent: {standard}")
 
 if __name__ == "__main__":
     main()
