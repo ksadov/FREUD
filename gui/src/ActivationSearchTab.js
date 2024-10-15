@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button, Form } from 'react-bootstrap';
+import { Button, Form, Row, Col } from 'react-bootstrap';
 import AudioPlayerWithActivation from './AudioPlayerWithActivation';
 import Plot from 'react-plotly.js';
 
@@ -90,92 +90,115 @@ const ActivationSearchTab = ({ isServerReady, nFeatures, API_BASE_URL }) => {
 
   return (
     <>
-      <Form onSubmit={handleSubmit} className="mb-4">
-        <Form.Group>
-          <Form.Label htmlFor="featureIdx">Feature Index:</Form.Label>
-          <Form.Control
-            id="featureIdx"
-            type="number"
-            value={featureIdx}
-            onChange={handleFeatureChange}
-            min="0"
-            max={nFeatures - 1}
-            disabled={isLoading || !isServerReady || !!error}
-          />
-        </Form.Group>
-        <Form.Group>
-          <Form.Label htmlFor="nResults">Max Number of Results:</Form.Label>
-          <Form.Control
-            id="nResults"
-            type="number"
-            value={nResults}
-            onChange={handleNResultsChange}
-            min="1"
-            disabled={isLoading || !isServerReady || !!error}
-          />
-        </Form.Group>
-        <Form.Group>
-          <Form.Label htmlFor="maxVal">Max Activation Value (optional):</Form.Label>
-          <Form.Control
-            id="maxVal"
-            type="number"
-            value={maxVal}
-            onChange={handleMaxValChange}
-            step="any"
-            disabled={isLoading || !isServerReady || !!error}
-          />
-        </Form.Group>
-        <Form.Group>
-          <Form.Label htmlFor="minVal">Min Activation Value (optional):</Form.Label>
-          <Form.Control
-            id="minVal"
-            type="number"
-            value={minVal}
-            onChange={handleMinValChange}
-            step="any"
-            disabled={isLoading || !isServerReady || !!error}
-          />
-        </Form.Group>
-        <Form.Check>
-          <Form.Check
-            id="useAbs"
-            type="checkbox"
-            checked={useAbs}
-            onChange={handleAbsChange}
-            disabled={isLoading || !isServerReady || !!error}
-          />
-          <Form.Label htmlFor="useAbs">Use Absolute Value</Form.Label>
-        </Form.Check>
-        <Button
-          type="submit"
-          disabled={isLoading || !isServerReady || !!error}
-        >
-          Update
-        </Button>
-      </Form>
+      <Row>
+        <Col>
+          <Form onSubmit={handleSubmit} className="mb-4">
+            <Row className="mb-3">
+              <Col md>
+                <Form.Group >
+                  <Form.Label htmlFor="featureIdx">Feature Index</Form.Label>
+                  <Form.Control
+                    id="featureIdx"
+                    type="number"
+                    value={featureIdx}
+                    onChange={handleFeatureChange}
+                    min="0"
+                    max={nFeatures - 1}
+                    disabled={isLoading || !isServerReady || !!error}
+                  />
+                </Form.Group>
+              </Col>
+              <Col md>
+                <Form.Group>
+                  <Form.Label htmlFor="nResults">Max Number of Results</Form.Label>
+                  <Form.Control
+                    id="nResults"
+                    type="number"
+                    value={nResults}
+                    onChange={handleNResultsChange}
+                    min="1"
+                    disabled={isLoading || !isServerReady || !!error}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row className="mb-3">
+              <Col md>
+                <Form.Group>
+                  <Form.Label htmlFor="maxVal">Max Activation Value (optional)</Form.Label>
+                  <Form.Control
+                    id="maxVal"
+                    type="number"
+                    value={maxVal}
+                    onChange={handleMaxValChange}
+                    step="any"
+                    disabled={isLoading || !isServerReady || !!error}
+                  />
+                </Form.Group>
+              </Col>
+              <Col mg="auto">
+                <Form.Group>
+                  <Form.Label htmlFor="minVal">Min Activation Value (optional)</Form.Label>
+                  <Form.Control
+                    id="minVal"
+                    type="number"
+                    value={minVal}
+                    onChange={handleMinValChange}
+                    step="any"
+                    disabled={isLoading || !isServerReady || !!error}
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            <Row className="mb-3">
+              <Col>
+                <Form.Check
+                  id="useAbs"
+                  type="checkbox"
+                  checked={useAbs}
+                  onChange={handleAbsChange}
+                  disabled={isLoading || !isServerReady || !!error}
+                  label="Use Absolute Value"
+                />
+              </Col>
+            </Row>
+            <Row>
+              <Col>
+                <Button
+                  type="submit"
+                  disabled={isLoading || !isServerReady || !!error}
+                >
+                  Update
+                </Button>
+              </Col>
+            </Row>
+          </Form>
+        </Col>
+        <Col>
+          {maxPerFile.length > 0 && (
+            <Plot
+              data={[
+                {
+                  x: maxPerFile,
+                  type: 'histogram',
+                  marker: {
+                    color: 'rgba(0,0,255,0.7)',
+                  },
+                },
+              ]}
+              layout={{
+                width: 720,
+                height: 480,
+                title: 'Histogram of Max Activation Values per File',
+                xaxis: { title: 'Max Activation Value' },
+                yaxis: { title: 'Count', type: 'log', autorange: true },
+              }}
+            />
+          )}
+        </Col>
+      </Row>
 
       {isLoading && <p className="text-info">Loading...</p>}
-
-      {maxPerFile.length > 0 && (
-        <Plot
-          data={[
-            {
-              x: maxPerFile,
-              type: 'histogram',
-              marker: {
-                color: 'rgba(0,0,255,0.7)',
-              },
-            },
-          ]}
-          layout={{
-            width: 720,
-            height: 480,
-            title: 'Histogram of Max Activation Values per File',
-            xaxis: { title: 'Max Activation Value' },
-            yaxis: { title: 'Count', type: 'log', autorange: true },
-          }}
-        />
-      )}
 
       {topFiles.map((file, index) => (
         <AudioPlayerWithActivation
