@@ -9,11 +9,10 @@ import io
 import numpy as np
 
 from src.dataset.activations import MemoryMappedActivationDataLoader, FlyActivationDataLoader, init_sae_from_checkpoint
-from src.utils.activations import top_activations, top_activations_for_audio
+from src.utils.activations import top_activations, top_activations_for_audio, manipulate_latent
 from src.models.hooked_model import init_cache, WhisperActivationCache, init_subbed, WhisperSubbedActivation
 from src.models.l1autoencoder import L1AutoEncoder
 from src.models.topkautoencoder import TopKAutoEncoder
-from src.scripts.manipulate_latent import manipulate_latent
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -27,7 +26,8 @@ sae_model = None
 whisper_subbed = None
 
 
-def get_gui_data(config: dict, from_disk: bool, files_to_search: Optional[int]) -> tuple[callable, int, str, WhisperActivationCache, L1AutoEncoder | TopKAutoEncoder]:
+def get_gui_data(config: dict, from_disk: bool, files_to_search: Optional[int]) -> \
+    tuple[callable, int, str, WhisperActivationCache, L1AutoEncoder | TopKAutoEncoder, WhisperSubbedActivation]:
     if from_disk:
         dataloader = MemoryMappedActivationDataLoader(
             config['out_folder'],

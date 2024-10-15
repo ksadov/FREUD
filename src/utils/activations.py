@@ -8,7 +8,7 @@ from src.utils.constants import SAMPLE_RATE, TIMESTEP_S
 from src.dataset.activations import MemoryMappedActivationDataLoader, FlyActivationDataLoader
 from src.models.l1autoencoder import L1EncoderOutput, L1AutoEncoder
 from src.models.topkautoencoder import TopKAutoEncoder
-from src.models.hooked_model import WhisperActivationCache
+from src.models.hooked_model import WhisperActivationCache, WhisperSubbedActivation
 from src.utils.audio_utils import get_mels_from_np_array
 
 
@@ -154,3 +154,59 @@ def top_activations_for_audio(audio_array: np.ndarray, whisper_cache: WhisperAct
         max_activations.append(act)
     activation_indexes = [i for i, _ in unique_top_activations]
     return activation_indexes, max_activations
+
+def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationCache,
+                  sae_model: Optional[L1AutoEncoder | TopKAutoEncoder], 
+                  whisper_subbed: WhisperSubbedActivation, feat_idx: int, 
+                  manipulation_factor: float) -> tuple[Optional[str], str, str, torch.Tensor, torch.Tensor]:
+    """
+    Given input audio, manipulate a model feature on the fly and return both the original whisper output and output 
+    after substuting in the manipulated feature.
+
+    :param audio: Audio file path
+    :param whisper_model: Whisper model
+    :param sae_model: SAE model
+    :param whisper_subbed: Whisper model with a substituted activation
+    :param feat_idx: Index of the feature to manipulate
+    :param manipulation_factor: Factor to manipulate the feature by
+    :return: Tuple of
+    - Original whisper output (if sae_model is not None)
+    - Substituted whisper output for manipulated feature
+    - Substituted whisper output without manipulation
+    - Substituted activation tensor without manipulation
+    - Substituted activation tensor with manipulation
+    """
+    mel = get_mels_from_np_array(whisper_cache.device, audio_array)
+    baseline_result = whisper_cache.forward(mel)
+    activations = whisper_cache.activations
+    if sae_model:
+        output = sae_model.forward(activations)
+        if isinstance(output.encoded, L1EncoderOutput):
+            manipulated_value = output.encoded.latent[:, :, feat_idx] * manipulation_factor
+            manipulated_encoding = output.encoded.latent.clone()
+            manipulated_encoding[:, :, feat_idx] = manipulated_value
+            manipulated_decoded = sae_model.decode(manipulated_encoding)
+            standard_decoded = sae_model.decode(output.encoded.latent)
+        else:
+            top_acts = output.encoded.top_acts.squeeze()
+            top_indices = output.encoded.top_indices.squeeze()
+            manipulated_top_acts = top_acts.clone()
+            for i, (idx_at_t, act_at_t) in enumerate(zip(top_indices, top_acts)):
+                if feat_idx in idx_at_t:
+                    idx = (idx_at_t == feat_idx).nonzero().item()
+                    manipulated_value = act_at_t[idx] * manipulation_factor
+                    manipulated_top_acts[i, idx] = manipulated_value
+            manipulated_decoded = sae_model.decode(manipulated_top_acts.unsqueeze(0), top_indices.unsqueeze(0))
+            standard_decoded = sae_model.decode(top_acts.unsqueeze(0), top_indices.unsqueeze(0))
+    else:
+        manipulated_value = activations[:, :, feat_idx] * manipulation_factor
+        manipulated_encoding = activations.clone()
+        manipulated_encoding[:, :, feat_idx] = manipulated_value
+        manipulated_decoded = manipulated_encoding
+        standard_decoded = activations
+    manipulated_subbed_result = whisper_subbed.forward(mel, manipulated_decoded)
+    standard_subbed_result = whisper_subbed.forward(mel, standard_decoded)
+    baseline_text = None if sae_model is None else baseline_result.text
+    activations_at_index = activations[:, :, feat_idx].squeeze()
+    manipulated_decoded_at_index = manipulated_decoded[:, :, feat_idx].squeeze()
+    return baseline_text, manipulated_subbed_result.text, standard_subbed_result.text, activations_at_index, manipulated_decoded_at_index
