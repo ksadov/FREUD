@@ -124,6 +124,7 @@ def upload_and_analyze_audio():
         return jsonify({"error": "No audio file provided"}), 400
     
     top_n = request.args.get('top_n', 32)
+    top_n = int(top_n)
     audio_file = request.files['audio']
     if audio_file.filename == '':
         return jsonify({"error": "No selected file"}), 400
@@ -136,6 +137,7 @@ def upload_and_analyze_audio():
         audio_np = np.array(audio_data)
 
         top_indices, top_activations = analyze_audio(audio_np, whisper_cache, sae_model, top_n)
+        top_activations = [x.tolist() for x in top_activations]
 
         # Return the result
         return jsonify({"top_indices": top_indices, "top_activations": top_activations})

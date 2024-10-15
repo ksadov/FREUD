@@ -118,7 +118,8 @@ def analyze_audio(audio_array: np.ndarray, whisper_cache: WhisperActivationCache
             act = activations[:, i]
         assert act.max() == v, f"Max activation at index {i} is {act.max()} but expected {v}"
         max_activations.append(act)
-    return [i for i, _ in unique_top_activations], max_activations
+    activation_indexes = [i for i, _ in unique_top_activations]
+    return activation_indexes, max_activations
 
 def init_analysis_models(whisper_model: str, sae_path: str, layer_to_cache: str, device: torch.device) -> \
   tuple[WhisperActivationCache, Optional[L1AutoEncoder | TopKAutoEncoder]]:

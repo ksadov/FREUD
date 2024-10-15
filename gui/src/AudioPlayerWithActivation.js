@@ -105,7 +105,12 @@ const AudioPlayerWithActivation = ({ audioFile, activations, apiBaseUrl }) => {
 
   useEffect(() => {
     if (wavesurferRef.current) {
-      wavesurferRef.current.load(`${apiBaseUrl}/audio/${encodeURIComponent(audioFile)}`);
+      if (apiBaseUrl) {
+        wavesurferRef.current.load(`${apiBaseUrl}/audio/${encodeURIComponent(audioFile)}`);
+      }
+      else {
+        wavesurferRef.current.load(audioFile);
+      }
     }
   }, [audioFile]);
 

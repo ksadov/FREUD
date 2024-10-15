@@ -3,7 +3,7 @@ import Button from 'react-bootstrap/Button';
 import AudioPlayerWithActivation from './AudioPlayerWithActivation';
 import Plot from 'react-plotly.js';
 
-const API_BASE_URL = 'http://192.168.0.17:5555';  // Replace with your actual IP address
+const API_BASE_URL = 'http://localhost:5555';  // Replace with your actual IP address
 
 const ActivationDisplay = () => {
   const [neuronIdx, setNeuronIdx] = useState('');
@@ -18,6 +18,10 @@ const ActivationDisplay = () => {
   const [error, setError] = useState(null);
   const [layerName, setLayerName] = useState('');
   const [nFeatures, setNFeatures] = useState(0);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [localAudioUrl, setLocalAudioUrl] = useState(null);
+  const [topN, setTopN] = useState(32);
+  const [uploadedFileResults, setUploadedFileResults] = useState(null);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/status`)
@@ -106,6 +110,47 @@ const ActivationDisplay = () => {
       });
   };
 
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    setSelectedFile(file);
+    setLocalAudioUrl(URL.createObjectURL(file));
+  };
+
+  const handleTopNChange = (event) => {
+    setTopN(parseInt(event.target.value, 10));
+  };
+
+  const handleFileUpload = async () => {
+    if (!selectedFile) {
+      setError('Please select a file to upload');
+      return;
+    }
+
+    setIsLoading(true);
+    const formData = new FormData();
+    formData.append('audio', selectedFile);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/analyze_audio?top_n=${topN}`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const data = await response.json();
+      console.log('Uploaded file results:', data);
+      setUploadedFileResults(data);
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error uploading and analyzing file:', error);
+      setError('Failed to upload and analyze file');
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="w-full max-w-3xl mx-auto px-4">
       <h1 className="text-2xl font-bold m-4">{layerName}</h1>
@@ -166,8 +211,55 @@ const ActivationDisplay = () => {
           Update
         </Button>
       </form>
+      <div className="mb-4">
+        <h2 className="text-xl font-semibold mb-2">Upload and Analyze Audio</h2>
+        <input
+          type="file"
+          onChange={handleFileChange}
+          accept="audio/*"
+          className="mb-2"
+        />
+        <div className="mb-2">
+          <label htmlFor="topN" className="mr-2">Top N Activations:</label>
+          <input
+            id="topN"
+            type="number"
+            value={topN}
+            onChange={handleTopNChange}
+            className="px-2 py-1 border rounded"
+            min="1"
+          />
+        </div>
+        <Button
+          onClick={handleFileUpload}
+          className="px-4 py-2"
+          disabled={!selectedFile || isLoading}
+        >
+          Upload and Analyze
+        </Button>
+      </div>
+
       {isLoading && <p>Loading...</p>}
       {!isServerReady && <p>Waiting for server...</p>}
+
+      {/* Updated display for uploaded file activations */}
+      {uploadedFileResults && localAudioUrl && (
+        <div>
+          <h3 className="text-lg font-semibold mb-2">Top {topN} Activations for Uploaded File</h3>
+          {uploadedFileResults.top_indices.map((neuronIndex, idx) => (
+            <div key={neuronIndex} className="mb-4">
+              <h4 className="text-md font-semibold">Neuron {neuronIndex}</h4>
+              <AudioPlayerWithActivation
+                audioFile={localAudioUrl}
+                activations={uploadedFileResults.top_activations[idx]}
+                isLocalFile={true}
+                neuronIndex={neuronIndex}
+                apiBaseUrl={null}
+              />
+            </div>
+          ))}
+        </div>
+      )}
       {maxPerFile.length > 0 && (
         <Plot
           data={[
