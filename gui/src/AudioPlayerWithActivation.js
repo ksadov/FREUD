@@ -152,8 +152,14 @@ const AudioPlayerWithActivation = ({ audioFile, activations, apiBaseUrl }) => {
         <span className="text-sm font-mono mx-2">
           {formatTime(currentTime)} / {formatTime(duration)}
         </span>
-        <span className="text-sm font-mono" style={{ color: currentActivation >= 0 ? 'green' : 'red' }}>
+        <span className="text-sm font-mono mx-2" style={{ color: currentActivation >= 0 ? 'green' : 'red' }}>
           Activation: {currentActivation.toFixed(4)}
+        </span>
+        <span className="text-sm font-mono mx-2">
+          Max: <span className="text-sm" style={{ color: 'green' }}> {Math.max(...activations).toFixed(4)}</span>
+        </span>
+        <span className="text-sm font-mono">
+          Min: <span className="text-sm" style={{ color: 'red' }}> {Math.min(...activations).toFixed(4)}</span>
         </span>
       </div>
     </div >
