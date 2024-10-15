@@ -1,11 +1,10 @@
 import React, { useState, useRef } from 'react';
 import { Button, Nav, Tab } from 'react-bootstrap';
-import AudioPlayerWithActivation from './AudioPlayerWithActivation';
 import AudioRecorder from './AudioRecorder';
 import AnalyzeAudioTab from './AnalyzeAudioTab';
 import ManipulateFeatureTab from './ManipulateFeatureTab';
 
-const FileUploadTab = ({ API_BASE_URL }) => {
+const AudioUploadTab = ({ API_BASE_URL }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [localAudioUrl, setLocalAudioUrl] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -121,4 +120,4 @@ const FileUploadTab = ({ API_BASE_URL }) => {
   );
 };
 
-export default FileUploadTab;
+export default AudioUploadTab;

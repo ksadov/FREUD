@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Tabs, Tab } from 'react-bootstrap';
 import ActivationSearchTab from './ActivationSearchTab';
-import FileUploadTab from './FileUploadTab';
+import AudioUploadTab from './AudioUploadTab';
 
 const API_BASE_URL = 'http://localhost:5555';  // Replace with your actual IP address
 
@@ -52,8 +52,8 @@ const ActivationDisplay = () => {
           />
         </Tab>
 
-        <Tab eventKey="fileUpload" title="File Upload">
-          <FileUploadTab
+        <Tab eventKey="audioUpload" title="Audio Upload">
+          <AudioUploadTab
             API_BASE_URL={API_BASE_URL}
           />
         </Tab>
