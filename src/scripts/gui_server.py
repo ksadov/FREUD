@@ -10,9 +10,10 @@ import numpy as np
 
 from src.dataset.activations import MemoryMappedActivationDataLoader, FlyActivationDataLoader, init_sae_from_checkpoint
 from src.utils.activations import top_activations, top_activations_for_audio
-from src.models.hooked_model import init_cache, WhisperActivationCache
+from src.models.hooked_model import init_cache, WhisperActivationCache, init_subbed, WhisperSubbedActivation
 from src.models.l1autoencoder import L1AutoEncoder
 from src.models.topkautoencoder import TopKAutoEncoder
+from src.scripts.manipulate_latent import manipulate_latent
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -23,6 +24,7 @@ n_features = None
 layer_name = None
 whisper_cache = None
 sae_model = None
+whisper_subbed = None
 
 
 def get_gui_data(config: dict, from_disk: bool, files_to_search: Optional[int]) -> tuple[callable, int, str, WhisperActivationCache, L1AutoEncoder | TopKAutoEncoder]:
@@ -49,13 +51,14 @@ def get_gui_data(config: dict, from_disk: bool, files_to_search: Optional[int]) 
         )
         whisper_cache = dataloader.whisper_cache
         sae_model = dataloader.sae_model
+    whisper_subbed = init_subbed(config['whisper_model'], config['layer_name'], config['device'])
     activation_shape = dataloader.activation_shape
     n_features = activation_shape[-1]
     layer_name = config['layer_name']
     return (lambda neuron_idx, n_files, max_val, min_val, absolute_magnitude, return_max_per_file:
             top_activations(dataloader, neuron_idx, n_files, max_val,
                             min_val, absolute_magnitude, return_max_per_file),
-            n_features, layer_name, whisper_cache, sae_model)
+            n_features, layer_name, whisper_cache, sae_model, whisper_subbed)
 
 
 def get_top_activations(top_fn: callable,
@@ -80,9 +83,10 @@ def init_gui_data(config_path, from_disk, files_to_search):
     global layer_name
     global whisper_cache
     global sae_model
+    global whisper_subbed
     with open(config_path, 'r') as f:
         config = json.load(f)
-    top_fn, n_features, layer_name, whisper_cache, sae_model = get_gui_data(
+    top_fn, n_features, layer_name, whisper_cache, sae_model, whisper_subbed = get_gui_data(
         config, from_disk, files_to_search)
     print("GUI data initialized.")
 
@@ -142,6 +146,38 @@ def upload_and_analyze_audio():
         return jsonify({"top_indices": top_indices, "top_activations": top_activations})
 
     return jsonify({"error": "Failed to process audio file"}), 500
+
+@app.route('/manipulate_feature', methods=['POST'])
+def upload_and_manipulate_audio():
+    if 'audio' not in request.files:
+        return jsonify({"error": "No audio file provided"}), 400
+    
+    audio_file = request.files['audio']
+    if audio_file.filename == '':
+        return jsonify({"error": "No selected file"}), 400
+
+    if audio_file:
+        # Read the audio file
+        audio_data, sample_rate = sf.read(io.BytesIO(audio_file.read()))
+
+        # Convert to numpy array if it's not already
+        audio_np = np.array(audio_data)
+
+        feat_idx = request.args.get('feat_idx', 0)
+        feat_idx = int(feat_idx)
+        manipulation_factor = request.args.get('manipulation_factor', 1.5)
+        manipulation_factor = float(manipulation_factor)
+
+        baseline_text, manipulated_text, standard_text, standard_activations, manipulated_activations = manipulate_latent(
+            audio_np, whisper_cache, sae_model, whisper_subbed, feat_idx, manipulation_factor)
+
+        print("manipulated activations: ", manipulated_activations)
+        print("Manipulate activation shape: ", manipulated_activations.shape)
+        print("standard activations: ", standard_activations)
+        # Return the result
+        return jsonify({"baseline_text": baseline_text, "manipulated_text": manipulated_text, 
+                        "standard_text": standard_text, "standard_activations": standard_activations.tolist(),
+                        "manipulated_activations": manipulated_activations.tolist()})
 
 
 if __name__ == '__main__':

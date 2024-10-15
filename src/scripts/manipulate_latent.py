@@ -64,7 +64,9 @@ def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationC
     manipulated_subbed_result = whisper_subbed.forward(mel, manipulated_decoded)
     standard_subbed_result = whisper_subbed.forward(mel, standard_decoded)
     baseline_text = None if sae_model is None else baseline_result.text
-    return baseline_text, manipulated_subbed_result.text, standard_subbed_result.text, activations, manipulated_decoded
+    activations_at_index = activations[:, :, feat_idx].squeeze()
+    manipulated_decoded_at_index = manipulated_decoded[:, :, feat_idx].squeeze()
+    return baseline_text, manipulated_subbed_result.text, standard_subbed_result.text, activations_at_index, manipulated_decoded_at_index
 
 
 def init_analysis_models(whisper_model: str, sae_path: str, layer_to_cache: str, device: torch.device) -> \
