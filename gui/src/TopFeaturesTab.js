@@ -60,14 +60,14 @@ const TopFeaturesTab = ({ API_BASE_URL, selectedFile, localAudioUrl, isLoading, 
       {uploadedFileResults && localAudioUrl && (
         <div>
           <h3 className="h5 my-3">Top {topN} Activations for Uploaded/Recorded File</h3>
-          {uploadedFileResults.top_indices.map((neuronIndex, idx) => (
-            <div key={neuronIndex} className="mb-4">
-              <h4 className="h6">Neuron {neuronIndex}</h4>
+          {uploadedFileResults.top_indices.map((featureIndex, idx) => (
+            <div key={featureIndex} className="mb-4">
+              <h4 className="h6">feature {featureIndex}</h4>
               <AudioPlayerWithActivation
                 audioFile={localAudioUrl}
                 activations={uploadedFileResults.top_activations[idx]}
                 isLocalFile={true}
-                neuronIndex={neuronIndex}
+                featureIndex={featureIndex}
               />
             </div>
           ))}
