@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button } from 'react-bootstrap';
+import { Button, Form } from 'react-bootstrap';
 import AudioPlayerWithActivation from './AudioPlayerWithActivation';
 import Plot from 'react-plotly.js';
 
@@ -90,74 +90,69 @@ const ActivationSearchTab = ({ isServerReady, nFeatures, API_BASE_URL }) => {
 
   return (
     <>
-      <form onSubmit={handleSubmit} className="mb-4">
-        <div className="mb-3">
-          <label htmlFor="featureIdx" className="form-label">Feature Index:</label>
-          <input
+      <Form onSubmit={handleSubmit} className="mb-4">
+        <Form.Group>
+          <Form.Label htmlFor="featureIdx">Feature Index:</Form.Label>
+          <Form.Control
             id="featureIdx"
             type="number"
             value={featureIdx}
             onChange={handleFeatureChange}
-            className="form-control"
             min="0"
             max={nFeatures - 1}
             disabled={isLoading || !isServerReady || !!error}
           />
-        </div>
-        <div className="mb-3">
-          <label htmlFor="nResults" className="form-label">Max Number of Results:</label>
-          <input
+        </Form.Group>
+        <Form.Group>
+          <Form.Label htmlFor="nResults">Max Number of Results:</Form.Label>
+          <Form.Control
             id="nResults"
             type="number"
             value={nResults}
             onChange={handleNResultsChange}
-            className="form-control"
             min="1"
             disabled={isLoading || !isServerReady || !!error}
           />
-        </div>
-        <div className="mb-3">
-          <label htmlFor="maxVal" className="form-label">Max Activation Value (optional):</label>
-          <input
+        </Form.Group>
+        <Form.Group>
+          <Form.Label htmlFor="maxVal">Max Activation Value (optional):</Form.Label>
+          <Form.Control
             id="maxVal"
             type="number"
             value={maxVal}
             onChange={handleMaxValChange}
-            className="form-control"
             step="any"
             disabled={isLoading || !isServerReady || !!error}
           />
-        </div>
-        <div className="mb-3">
-          <label htmlFor="minVal" className="form-label">Min Activation Value (optional):</label>
-          <input
+        </Form.Group>
+        <Form.Group>
+          <Form.Label htmlFor="minVal">Min Activation Value (optional):</Form.Label>
+          <Form.Control
             id="minVal"
             type="number"
             value={minVal}
             onChange={handleMinValChange}
-            className="form-control"
             step="any"
             disabled={isLoading || !isServerReady || !!error}
           />
-        </div>
-        <div className="mb-3 form-check">
-          <input
+        </Form.Group>
+        <Form.Check>
+          <Form.Check
             id="useAbs"
             type="checkbox"
             checked={useAbs}
             onChange={handleAbsChange}
-            className="form-check-input"
             disabled={isLoading || !isServerReady || !!error}
           />
-          <label htmlFor="useAbs" className="form-check-label">Use Absolute Value</label>
-        </div>
+          <Form.Label htmlFor="useAbs">Use Absolute Value</Form.Label>
+        </Form.Check>
         <Button
           type="submit"
           disabled={isLoading || !isServerReady || !!error}
         >
           Update
         </Button>
-      </form>
+      </Form>
 
       {isLoading && <p className="text-info">Loading...</p>}
 
