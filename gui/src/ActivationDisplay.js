@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Tabs, Tab } from 'react-bootstrap';
-import NeuronSearchTab from './NeuronSearchTab';
+import ActivationSearchTab from './ActivationSearchTab';
 import FileUploadTab from './FileUploadTab';
 
 const API_BASE_URL = 'http://localhost:5555';  // Replace with your actual IP address
@@ -10,7 +10,7 @@ const ActivationDisplay = () => {
   const [error, setError] = useState(null);
   const [layerName, setLayerName] = useState('');
   const [nFeatures, setNFeatures] = useState(0);
-  const [activeKey, setActiveKey] = useState('neuronSearch');
+  const [activeKey, setActiveKey] = useState('activationSearch');
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/status`)
@@ -44,8 +44,8 @@ const ActivationDisplay = () => {
         onSelect={handleTabSelect}
         className="mb-3"
       >
-        <Tab eventKey="neuronSearch" title="Neuron Search">
-          <NeuronSearchTab
+        <Tab eventKey="activationSearch" title="Activation Search">
+          <ActivationSearchTab
             isServerReady={isServerReady}
             nFeatures={nFeatures}
             API_BASE_URL={API_BASE_URL}

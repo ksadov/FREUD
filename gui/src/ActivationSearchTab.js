@@ -3,7 +3,7 @@ import { Button } from 'react-bootstrap';
 import AudioPlayerWithActivation from './AudioPlayerWithActivation';
 import Plot from 'react-plotly.js';
 
-const NeuronSearchTab = ({ isServerReady, nFeatures, API_BASE_URL }) => {
+const ActivationSearchTab = ({ isServerReady, nFeatures, API_BASE_URL }) => {
   const [neuronIdx, setNeuronIdx] = useState('');
   const [nResults, setNResults] = useState(20);
   const [maxVal, setMaxVal] = useState('');
@@ -194,4 +194,4 @@ const NeuronSearchTab = ({ isServerReady, nFeatures, API_BASE_URL }) => {
   );
 };
 
-export default NeuronSearchTab;
+export default ActivationSearchTab;
