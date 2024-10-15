@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Button } from 'react-bootstrap';
+import { Button, Row, Col, Form } from 'react-bootstrap';
 import AudioPlayerWithActivation from './AudioPlayerWithActivation';
 
 const TopFeaturesTab = ({ API_BASE_URL, selectedFile, localAudioUrl, isLoading, setIsLoading, isRecording, setError }) => {
@@ -39,17 +39,21 @@ const TopFeaturesTab = ({ API_BASE_URL, selectedFile, localAudioUrl, isLoading, 
 
   return (
     <div>
-      <div className="mb-3">
-        <label htmlFor="topN" className="form-label">Max Number of Results:</label>
-        <input
-          id="topN"
-          type="number"
-          value={topN}
-          onChange={handleTopNChange}
-          className="form-control"
-          min="1"
-        />
-      </div>
+      <Row className="mb-3">
+        <Col sm="auto">
+          <Form.Group>
+            <Form.Label htmlFor="topN" className="form-label">Max Number of Results:</Form.Label>
+            <Form.Control
+              id="topN"
+              type="number"
+              value={topN}
+              onChange={handleTopNChange}
+              className="form-control"
+              min="1"
+            />
+          </Form.Group>
+        </Col>
+      </Row>
       <Button
         onClick={handleFileUpload}
         disabled={!selectedFile || isLoading || isRecording}
