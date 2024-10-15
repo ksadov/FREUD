@@ -4,7 +4,7 @@ import AudioRecorder from './AudioRecorder';
 import TopFeaturesTab from './TopFeaturesTab';
 import ManipulateFeatureTab from './ManipulateFeatureTab';
 
-const AudioUploadTab = ({ API_BASE_URL }) => {
+const UploadAudioTab = ({ API_BASE_URL }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [localAudioUrl, setLocalAudioUrl] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -120,4 +120,4 @@ const AudioUploadTab = ({ API_BASE_URL }) => {
   );
 };
 
-export default AudioUploadTab;
+export default UploadAudioTab;
