@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Button, Nav, Tab } from 'react-bootstrap';
+import { Button, Nav, Tab, Row, Col } from 'react-bootstrap';
 import AudioRecorder from './AudioRecorder';
 import TopFeaturesTab from './TopFeaturesTab';
 import ManipulateFeatureTab from './ManipulateFeatureTab';
@@ -49,35 +49,48 @@ const UploadAudioTab = ({ API_BASE_URL }) => {
 
   return (
     <div>
-      <h2 className="h4 mb-3">Upload or Record and Analyze Audio</h2>
-      <div className="mb-3">
-        <input
-          ref={fileInputRef}
-          type="file"
-          onChange={handleFileChange}
-          accept="audio/*"
-          className="form-control"
-          disabled={isRecording || hasAudio}
-        />
-      </div>
-      <div className="mb-3">
-        <h3 className="h5">Or Record Audio</h3>
-        <AudioRecorder
-          onRecordingStart={handleRecordingStart}
-          onRecordingComplete={handleRecordingComplete}
-          disabled={hasAudio}
-        />
-      </div>
-      {localAudioUrl && (
-        <div className="mb-3">
-          <h3 className="h5">Preview Recorded/Uploaded Audio</h3>
-          <div className="d-flex align-items-center">
-            <audio ref={audioRef} controls src={localAudioUrl} className="flex-grow-1 me-2" />
-            <Button variant="danger" onClick={handleDiscardAudio}>Discard</Button>
+      <Row className="mb-3">
+        <Row className="mb-2">
+          <h3>Upload or Record Audio</h3>
+        </Row>
+        <Row>
+          <Col>
+            <input
+              ref={fileInputRef}
+              type="file"
+              onChange={handleFileChange}
+              accept="audio/*"
+              className="form-control"
+              disabled={isRecording || hasAudio}
+            />
+          </Col>
+          <Col>
+            <AudioRecorder
+              onRecordingStart={handleRecordingStart}
+              onRecordingComplete={handleRecordingComplete}
+              disabled={hasAudio}
+            />
+          </Col>
+        </Row>
+      </Row>
+      <Row>
+        {localAudioUrl && (
+          <div className="mb-3">
+            <Row className="mb-2">
+              <h5>Preview Recorded/Uploaded Audio</h5>
+            </Row>
+            <Row className="align-items-center">
+              <Col className="d-flex">
+                <audio ref={audioRef} controls src={localAudioUrl} className="flex-grow-1 me-2" />
+              </Col>
+              <Col>
+                <Button variant="danger" onClick={handleDiscardAudio}>Discard</Button>
+              </Col>
+            </Row>
           </div>
-        </div>
-      )}
-      <div className="border border-2 rounded p-2">
+        )}
+      </Row>
+      <Row className="border border-2 rounded p-2">
         <Tab.Container id="analysis-tabs" defaultActiveKey="topfeatures">
           <Nav variant="tabs" className="mb-3">
             <Nav.Item>
@@ -112,7 +125,7 @@ const UploadAudioTab = ({ API_BASE_URL }) => {
             </Tab.Pane>
           </Tab.Content>
         </Tab.Container>
-      </div>
+      </Row>
 
       {isLoading && <p className="text-info">Loading...</p>}
       {error && <p className="text-danger">{error}</p>}
