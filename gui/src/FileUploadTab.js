@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Button, Form } from 'react-bootstrap';
+import { Button, Form, Nav, Tab } from 'react-bootstrap';
 import AudioPlayerWithActivation from './AudioPlayerWithActivation';
 import AudioRecorder from './AudioRecorder';
 
@@ -142,100 +142,115 @@ const FileUploadTab = ({ API_BASE_URL }) => {
           </div>
         </div>
       )}
-      <div className="mb-3">
-        <label htmlFor="topN" className="form-label">Top N Activations:</label>
-        <input
-          id="topN"
-          type="number"
-          value={topN}
-          onChange={handleTopNChange}
-          className="form-control"
-          min="1"
-        />
+      <div className="border border-2 rounded p-2">
+        <Tab.Container id="analysis-tabs" defaultActiveKey="analyze">
+          <Nav variant="tabs" className="mb-3">
+            <Nav.Item>
+              <Nav.Link eventKey="analyze">Analyze Audio</Nav.Link>
+            </Nav.Item>
+            <Nav.Item>
+              <Nav.Link eventKey="manipulate">Manipulate Feature</Nav.Link>
+            </Nav.Item>
+          </Nav>
+          <Tab.Content>
+            <Tab.Pane eventKey="analyze">
+              <div className="mb-3">
+                <label htmlFor="topN" className="form-label">Top N Activations:</label>
+                <input
+                  id="topN"
+                  type="number"
+                  value={topN}
+                  onChange={handleTopNChange}
+                  className="form-control"
+                  min="1"
+                />
+              </div>
+              <Button
+                onClick={handleFileUpload}
+                disabled={!selectedFile || isLoading || isRecording}
+                className="mb-3"
+              >
+                Analyze Audio
+              </Button>
+              {uploadedFileResults && localAudioUrl && (
+                <div>
+                  <h3 className="h5 my-3">Top {topN} Activations for Uploaded/Recorded File</h3>
+                  {uploadedFileResults.top_indices.map((neuronIndex, idx) => (
+                    <div key={neuronIndex} className="mb-4">
+                      <h4 className="h6">Neuron {neuronIndex}</h4>
+                      <AudioPlayerWithActivation
+                        audioFile={localAudioUrl}
+                        activations={uploadedFileResults.top_activations[idx]}
+                        isLocalFile={true}
+                        neuronIndex={neuronIndex}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Tab.Pane>
+            <Tab.Pane eventKey="manipulate">
+              <Form onSubmit={handleManipulateFeature} className="mb-3">
+                <Form.Group className="mb-3">
+                  <Form.Label>Feature Index</Form.Label>
+                  <Form.Control
+                    type="number"
+                    value={featureIndex}
+                    onChange={(e) => setFeatureIndex(parseInt(e.target.value))}
+                    min="0"
+                  />
+                </Form.Group>
+                <Form.Group className="mb-3">
+                  <Form.Label>Ablation Factor</Form.Label>
+                  <Form.Control
+                    type="number"
+                    value={ablationFactor}
+                    onChange={(e) => setAblationFactor(parseFloat(e.target.value))}
+                    step="0.1"
+                  />
+                </Form.Group>
+                <Button type="submit" disabled={!selectedFile || isLoading || isRecording}>
+                  Manipulate Feature
+                </Button>
+              </Form>
+              {manipulationResults && localAudioUrl && (
+                <div>
+                  <h3 className="h5 my-3">Feature Manipulation Results</h3>
+                  {manipulationResults.baseline_text && (
+                    <div className="mb-3">
+                      <h4 className="h6">Baseline Text</h4>
+                      <p>{manipulationResults.baseline_text}</p>
+                    </div>
+                  )}
+                  <div className="mb-4">
+                    <h4 className="h6">Standard Activations</h4>
+                    <AudioPlayerWithActivation
+                      audioFile={localAudioUrl}
+                      activations={manipulationResults.standard_activations}
+                      isLocalFile={true}
+                      neuronIndex={featureIndex}
+                    />
+                    <p><strong>Standard Text:</strong> {manipulationResults.standard_text}</p>
+                  </div>
+                  <div className="mb-4">
+                    <h4 className="h6">Manipulated Activations</h4>
+                    <AudioPlayerWithActivation
+                      audioFile={localAudioUrl}
+                      activations={manipulationResults.manipulated_activations}
+                      isLocalFile={true}
+                      neuronIndex={featureIndex}
+                    />
+                    <p><strong>Manipulated Text:</strong> {manipulationResults.manipulated_text}</p>
+                  </div>
+                </div>
+              )}
+            </Tab.Pane>
+          </Tab.Content>
+        </Tab.Container>
       </div>
-      <Button
-        onClick={handleFileUpload}
-        disabled={!selectedFile || isLoading || isRecording}
-        className="mb-3"
-      >
-        Upload and Analyze
-      </Button>
-
-      <Form onSubmit={handleManipulateFeature} className="mb-3">
-        <Form.Group className="mb-3">
-          <Form.Label>Feature Index</Form.Label>
-          <Form.Control
-            type="number"
-            value={featureIndex}
-            onChange={(e) => setFeatureIndex(parseInt(e.target.value))}
-            min="0"
-          />
-        </Form.Group>
-        <Form.Group className="mb-3">
-          <Form.Label>Ablation Factor</Form.Label>
-          <Form.Control
-            type="number"
-            value={ablationFactor}
-            onChange={(e) => setAblationFactor(parseFloat(e.target.value))}
-            step="0.1"
-          />
-        </Form.Group>
-        <Button type="submit" disabled={!selectedFile || isLoading || isRecording}>
-          Manipulate Feature
-        </Button>
-      </Form>
 
       {isLoading && <p className="text-info">Loading...</p>}
       {error && <p className="text-danger">{error}</p>}
-
-      {uploadedFileResults && localAudioUrl && (
-        <div>
-          <h3 className="h5 my-3">Top {topN} Activations for Uploaded/Recorded File</h3>
-          {uploadedFileResults.top_indices.map((neuronIndex, idx) => (
-            <div key={neuronIndex} className="mb-4">
-              <h4 className="h6">Neuron {neuronIndex}</h4>
-              <AudioPlayerWithActivation
-                audioFile={localAudioUrl}
-                activations={uploadedFileResults.top_activations[idx]}
-                isLocalFile={true}
-                neuronIndex={neuronIndex}
-              />
-            </div>
-          ))}
-        </div>
-      )}
-
-      {manipulationResults && localAudioUrl && (
-        <div>
-          <h3 className="h5 my-3">Feature Manipulation Results</h3>
-          {manipulationResults.baseline_text && (
-            <div className="mb-3">
-              <h4 className="h6">Baseline Text</h4>
-              <p>{manipulationResults.baseline_text}</p>
-            </div>
-          )}
-          <div className="mb-4">
-            <h4 className="h6">Standard Activations</h4>
-            <AudioPlayerWithActivation
-              audioFile={localAudioUrl}
-              activations={manipulationResults.standard_activations}
-              isLocalFile={true}
-              neuronIndex={featureIndex}
-            />
-            <p><strong>Standard Text:</strong> {manipulationResults.standard_text}</p>
-          </div>
-          <div className="mb-4">
-            <h4 className="h6">Manipulated Activations</h4>
-            <AudioPlayerWithActivation
-              audioFile={localAudioUrl}
-              activations={manipulationResults.manipulated_activations}
-              isLocalFile={true}
-              neuronIndex={featureIndex}
-            />
-            <p><strong>Manipulated Text:</strong> {manipulationResults.manipulated_text}</p>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
