@@ -5,6 +5,7 @@ import Plot from 'react-plotly.js';
 
 const NeuronSearchTab = ({ isServerReady, nFeatures, API_BASE_URL }) => {
   const [neuronIdx, setNeuronIdx] = useState('');
+  const [nResults, setNResults] = useState(20);
   const [maxVal, setMaxVal] = useState('');
   const [minVal, setMinVal] = useState('');
   const [useAbs, setUseAbs] = useState(false);
@@ -16,6 +17,10 @@ const NeuronSearchTab = ({ isServerReady, nFeatures, API_BASE_URL }) => {
 
   const handleNeuronChange = (event) => {
     setNeuronIdx(event.target.value);
+  };
+
+  const handleNResultsChange = (event) => {
+    setNResults(event.target.value);
   };
 
   const handleMaxValChange = (event) => {
@@ -35,16 +40,16 @@ const NeuronSearchTab = ({ isServerReady, nFeatures, API_BASE_URL }) => {
     if (neuronIdx !== '') {
       const idx = parseInt(neuronIdx, 10);
       if (!isNaN(idx) && idx >= 0 && idx < nFeatures) {
-        fetchTopFiles(idx);
+        fetchTopFiles(idx, nResults);
       } else {
         setError(`Please enter a valid neuron index between 0 and ${nFeatures - 1}`);
       }
     }
   };
 
-  const fetchTopFiles = (idx) => {
+  const fetchTopFiles = (idx, nResults) => {
     setIsLoading(true);
-    let url = `${API_BASE_URL}/top_files?neuron_idx=${idx}&n_files=20`;
+    let url = `${API_BASE_URL}/top_files?neuron_idx=${idx}&n_files=${nResults}`;
     if (maxVal !== '') {
       const maxValFloat = parseFloat(maxVal);
       if (!isNaN(maxValFloat)) {
@@ -96,6 +101,18 @@ const NeuronSearchTab = ({ isServerReady, nFeatures, API_BASE_URL }) => {
             className="form-control"
             min="0"
             max={nFeatures - 1}
+            disabled={isLoading || !isServerReady || !!error}
+          />
+        </div>
+        <div className="mb-3">
+          <label htmlFor="nResults" className="form-label">Number of Results:</label>
+          <input
+            id="nResults"
+            type="number"
+            value={nResults}
+            onChange={handleNResultsChange}
+            className="form-control"
+            min="1"
             disabled={isLoading || !isServerReady || !!error}
           />
         </div>
