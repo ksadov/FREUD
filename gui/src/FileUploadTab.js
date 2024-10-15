@@ -85,7 +85,7 @@ const FileUploadTab = ({ API_BASE_URL }) => {
 
       {uploadedFileResults && localAudioUrl && (
         <div>
-          <h3 className="h5 mb-3">Top {topN} Activations for Uploaded File</h3>
+          <h3 className="h5 my-3">Top {topN} Activations for Uploaded File</h3>
           {uploadedFileResults.top_indices.map((neuronIndex, idx) => (
             <div key={neuronIndex} className="mb-4">
               <h4 className="h6">Neuron {neuronIndex}</h4>
