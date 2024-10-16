@@ -21,13 +21,13 @@ def trim_activation(audio_fname: str, activation: torch.Tensor) -> torch.Tensor:
     return activation[:n_frames]
 
 
-def trim_activation_to_np(audio_array: np.ndarray, activation: torch.Tensor) -> torch.Tensor:
+def activation_length_from_audio_array(audio_array: np.ndarray) -> torch.Tensor:
     """
-    Trim the activation tensor to match the duration of the audio array
+    Get the number of frames in the activation tensor from an audio array
     """
     audio_duration = len(audio_array) / SAMPLE_RATE
     n_frames = int(audio_duration / TIMESTEP_S)
-    return activation[:n_frames]
+    return n_frames
 
 
 def activation_tensor_from_indexed(activation_values: torch.Tensor, activation_indices: torch.Tensor, feature_idx: int) -> torch.Tensor:
@@ -129,17 +129,19 @@ def top_activations_for_audio(audio_array: np.ndarray, whisper_cache: WhisperAct
     whisper_cache.forward(mel)
     activations = whisper_cache.activations
     indexed_activations = False
+    true_length = activation_length_from_audio_array(audio_array)
     if sae_model:
         output = sae_model.forward(activations)
         if isinstance(output.encoded, L1EncoderOutput):
             activations = output.encoded.latent
         else:
-            top_acts = output.encoded.top_acts.squeeze()
-            top_indices = output.encoded.top_indices.squeeze()
+            top_acts = output.encoded.top_acts.squeeze()[:true_length, :]
+            top_indices = output.encoded.top_indices.squeeze()[:true_length, :]
             indexed_activations = True
 
     if not indexed_activations:
         activations = activations.squeeze()
+        activations = activations[:true_length, :]
         top_k_results = activations.topk(top_n)
         top_acts, top_indices = top_k_results.values, top_k_results.indices
 
@@ -162,8 +164,10 @@ def top_activations_for_audio(audio_array: np.ndarray, whisper_cache: WhisperAct
         if indexed_activations:
             act = activation_tensor_from_indexed(
                 top_acts.unsqueeze(0), top_indices.unsqueeze(0), i)
+            print("ACT SHAPE", act.shape)
         else:
             act = activations[:, i]
+            print("ACT SHAPE", act.shape)
         assert act.max(
         ) == v, f"Max activation at index {i} is {act.max()} but expected {v}"
         max_activations.append(act)
@@ -221,7 +225,6 @@ def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationC
     else:
         manipulated_value = activations[:, :, feat_idx] * manipulation_factor
         manipulated_encoding = activations.clone()
-        print("manipulated encoding device", manipulated_encoding.device)
         manipulated_encoding[:, :, feat_idx] = manipulated_value
         manipulated_decoded = manipulated_encoding
         standard_decoded = activations
@@ -232,9 +235,10 @@ def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationC
     activations_at_index = activations[:, :, feat_idx].squeeze()
     manipulated_decoded_at_index = manipulated_decoded[:, :, feat_idx].squeeze(
     )
-    activations_at_index_trimmed = trim_activation_to_np(
-        audio_array, activations_at_index).cpu()
-    manipulated_decoded_at_index_trimmed = trim_activation_to_np(
-        audio_array, manipulated_decoded_at_index).cpu()
+    activation_trim_length = activation_length_from_audio_array(audio_array)
+    activations_at_index_trimmed = activations_at_index[:activation_trim_length].cpu(
+    )
+    manipulated_decoded_at_index_trimmed = manipulated_decoded_at_index[:activation_trim_length].cpu(
+    )
     return baseline_text, manipulated_subbed_result.text, standard_subbed_result.text, activations_at_index_trimmed, \
         manipulated_decoded_at_index_trimmed
