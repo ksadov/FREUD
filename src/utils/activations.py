@@ -100,13 +100,14 @@ def top_activations(dataloader: MemoryMappedActivationDataLoader | FlyActivation
     print("Search complete.")
     return pq, None if not return_max_per_file else max_per_file
 
+
 @torch.no_grad()
 def top_activations_for_audio(audio_array: np.ndarray, whisper_cache: WhisperActivationCache,
-                  sae_model: Optional[L1AutoEncoder | TopKAutoEncoder], 
-                  top_n: int) -> tuple[list[int], list[float]]:
+                              sae_model: Optional[L1AutoEncoder | TopKAutoEncoder],
+                              top_n: int) -> tuple[list[int], list[float]]:
     """
     Given input audio, get the top features encoded by the whisper model and optionally the SAE model.
-    
+
     :param audio_array: array of audio samples
     :param whisper_model: Whisper model
     :param sae_model: SAE model
@@ -127,7 +128,7 @@ def top_activations_for_audio(audio_array: np.ndarray, whisper_cache: WhisperAct
             top_acts = output.encoded.top_acts.squeeze()
             top_indices = output.encoded.top_indices.squeeze()
             indexed_activations = True
-    
+
     if not indexed_activations:
         activations = activations.squeeze()
         top_k_results = activations.topk(top_n)
@@ -135,9 +136,11 @@ def top_activations_for_audio(audio_array: np.ndarray, whisper_cache: WhisperAct
 
     unique_top_activations = []
     for top_acts_at_t, top_indices_at_t in zip(top_acts, top_indices):
-        unique_top_activations.extend([(idx.item(), value.item()) for idx, value in zip(top_indices_at_t, top_acts_at_t)])
+        unique_top_activations.extend(
+            [(idx.item(), value.item()) for idx, value in zip(top_indices_at_t, top_acts_at_t)])
         # sort by value
-        unique_top_activations = sorted(unique_top_activations, key=lambda x: x[1], reverse=True)
+        unique_top_activations = sorted(
+            unique_top_activations, key=lambda x: x[1], reverse=True)
         new_unique = []
         for i, (idx, value) in enumerate(unique_top_activations):
             if idx not in [idx for idx, _ in new_unique] and len(new_unique) < top_n:
@@ -148,18 +151,21 @@ def top_activations_for_audio(audio_array: np.ndarray, whisper_cache: WhisperAct
     max_activations = []
     for i, v in unique_top_activations:
         if indexed_activations:
-            act = activation_tensor_from_indexed(top_acts.unsqueeze(0), top_indices.unsqueeze(0), i)
+            act = activation_tensor_from_indexed(
+                top_acts.unsqueeze(0), top_indices.unsqueeze(0), i)
         else:
             act = activations[:, i]
-        assert act.max() == v, f"Max activation at index {i} is {act.max()} but expected {v}"
+        assert act.max(
+        ) == v, f"Max activation at index {i} is {act.max()} but expected {v}"
         max_activations.append(act)
     activation_indexes = [i for i, _ in unique_top_activations]
     return activation_indexes, max_activations
 
+
 def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationCache,
-                  sae_model: Optional[L1AutoEncoder | TopKAutoEncoder], 
-                  whisper_subbed: WhisperSubbedActivation, feat_idx: int, 
-                  manipulation_factor: float) -> tuple[Optional[str], str, str, torch.Tensor, torch.Tensor]:
+                      sae_model: Optional[L1AutoEncoder | TopKAutoEncoder],
+                      whisper_subbed: WhisperSubbedActivation, feat_idx: int,
+                      manipulation_factor: float) -> tuple[Optional[str], str, str, torch.Tensor, torch.Tensor]:
     """
     Given input audio, manipulate a model feature on the fly and return both the original whisper output and output 
     after substuting in the manipulated feature.
@@ -180,11 +186,12 @@ def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationC
     """
     mel = get_mels_from_np_array(whisper_cache.device, audio_array)
     baseline_result = whisper_cache.forward(mel)
-    activations = whisper_cache.activations
+    activations = whisper_cache.activations.to(whisper_cache.device)
     if sae_model:
         output = sae_model.forward(activations)
         if isinstance(output.encoded, L1EncoderOutput):
-            manipulated_value = output.encoded.latent[:, :, feat_idx] * manipulation_factor
+            manipulated_value = output.encoded.latent[:,
+                                                      :, feat_idx] * manipulation_factor
             manipulated_encoding = output.encoded.latent.clone()
             manipulated_encoding[:, :, feat_idx] = manipulated_value
             manipulated_decoded = sae_model.decode(manipulated_encoding)
@@ -198,17 +205,22 @@ def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationC
                     idx = (idx_at_t == feat_idx).nonzero().item()
                     manipulated_value = act_at_t[idx] * manipulation_factor
                     manipulated_top_acts[i, idx] = manipulated_value
-            manipulated_decoded = sae_model.decode(manipulated_top_acts.unsqueeze(0), top_indices.unsqueeze(0))
-            standard_decoded = sae_model.decode(top_acts.unsqueeze(0), top_indices.unsqueeze(0))
+            manipulated_decoded = sae_model.decode(
+                manipulated_top_acts.unsqueeze(0), top_indices.unsqueeze(0))
+            standard_decoded = sae_model.decode(
+                top_acts.unsqueeze(0), top_indices.unsqueeze(0))
     else:
         manipulated_value = activations[:, :, feat_idx] * manipulation_factor
         manipulated_encoding = activations.clone()
+        print("manipulated encoding device", manipulated_encoding.device)
         manipulated_encoding[:, :, feat_idx] = manipulated_value
         manipulated_decoded = manipulated_encoding
         standard_decoded = activations
-    manipulated_subbed_result = whisper_subbed.forward(mel, manipulated_decoded)
+    manipulated_subbed_result = whisper_subbed.forward(
+        mel, manipulated_decoded)
     standard_subbed_result = whisper_subbed.forward(mel, standard_decoded)
     baseline_text = None if sae_model is None else baseline_result.text
     activations_at_index = activations[:, :, feat_idx].squeeze()
-    manipulated_decoded_at_index = manipulated_decoded[:, :, feat_idx].squeeze()
-    return baseline_text, manipulated_subbed_result.text, standard_subbed_result.text, activations_at_index, manipulated_decoded_at_index
+    manipulated_decoded_at_index = manipulated_decoded[:, :, feat_idx].squeeze(
+    )
+    return baseline_text, manipulated_subbed_result.text, standard_subbed_result.text, activations_at_index.cpu(), manipulated_decoded_at_index.cpu()
