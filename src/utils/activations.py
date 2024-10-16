@@ -21,6 +21,15 @@ def trim_activation(audio_fname: str, activation: torch.Tensor) -> torch.Tensor:
     return activation[:n_frames]
 
 
+def trim_activation_to_np(audio_array: np.ndarray, activation: torch.Tensor) -> torch.Tensor:
+    """
+    Trim the activation tensor to match the duration of the audio array
+    """
+    audio_duration = len(audio_array) / SAMPLE_RATE
+    n_frames = int(audio_duration / TIMESTEP_S)
+    return activation[:n_frames]
+
+
 def activation_tensor_from_indexed(activation_values: torch.Tensor, activation_indices: torch.Tensor, feature_idx: int) -> torch.Tensor:
     """
     Convert an indexed activation tensor to a dense tensor
@@ -223,4 +232,9 @@ def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationC
     activations_at_index = activations[:, :, feat_idx].squeeze()
     manipulated_decoded_at_index = manipulated_decoded[:, :, feat_idx].squeeze(
     )
-    return baseline_text, manipulated_subbed_result.text, standard_subbed_result.text, activations_at_index.cpu(), manipulated_decoded_at_index.cpu()
+    activations_at_index_trimmed = trim_activation_to_np(
+        audio_array, activations_at_index).cpu()
+    manipulated_decoded_at_index_trimmed = trim_activation_to_np(
+        audio_array, manipulated_decoded_at_index).cpu()
+    return baseline_text, manipulated_subbed_result.text, standard_subbed_result.text, activations_at_index_trimmed, \
+        manipulated_decoded_at_index_trimmed
