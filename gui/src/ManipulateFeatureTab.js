@@ -56,8 +56,7 @@ const ManipulateFeatureTab = ({ API_BASE_URL, selectedFile, localAudioUrl, isLoa
               <Form.Control
                 type="number"
                 value={ablationFactor}
-                onChange={(e) => setAblationFactor(parseFloat(e.target.value))}
-                step="0.1"
+                onChange={(e) => setAblationFactor(e.target.value)}
               />
             </Form.Group>
           </Col>
