@@ -91,7 +91,7 @@ const ActivationSearchTab = ({ isServerReady, nFeatures, API_BASE_URL }) => {
   return (
     <>
       <Row>
-        <Col>
+        <Col md={4}>
           <Form onSubmit={handleSubmit} className="mb-4">
             <Row className="mb-3">
               <Col md>
