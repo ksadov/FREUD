@@ -3,7 +3,7 @@ import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin from 'wavesurfer.js/dist/plugin/wavesurfer.regions.min.js';
 import SpectrogramPlugin from 'wavesurfer.js/dist/plugin/wavesurfer.spectrogram.min.js';
 import CursorPlugin from 'wavesurfer.js/src/plugin/cursor';
-import Button from 'react-bootstrap/Button';
+import { Button } from 'react-bootstrap';
 import { IoMdPlay, IoMdPause, IoMdDownload } from "react-icons/io";
 
 const AudioPlayerWithActivation = ({ audioFile, activations, apiBaseUrl }) => {
@@ -168,25 +168,29 @@ const AudioPlayerWithActivation = ({ audioFile, activations, apiBaseUrl }) => {
         {/* Spectrogram container overlaying the waveform */}
         <div ref={spectrogramRef} style={{ position: 'absolute', width: '100%', height: '100%', zIndex: -100 }} />
       </div>
-      <div className="flex bg-light items-center p-1">
-        <Button onClick={togglePlayPause} variant="outline-primary" className=" px-2 py-1">
-          {isPlaying ? <IoMdPause size={24} /> : <IoMdPlay size={24} />}
-        </Button>
-        <span className="text-sm font-mono mx-2">
-          {formatTime(currentTime)} / {formatTime(duration)}
-        </span>
-        <span className="text-sm font-mono mx-2" style={{ color: currentActivation >= 0 ? 'green' : 'red' }}>
-          Activation: {currentActivation.toFixed(4)}
-        </span>
-        <span className="text-sm font-mono mx-2">
-          Max: <span className="text-sm" style={{ color: 'green' }}> {Math.max(...activations).toFixed(4)}</span>
-        </span>
-        <span className="text-sm font-mono">
-          Min: <span className="text-sm" style={{ color: 'red' }}> {Math.min(...activations).toFixed(4)}</span>
-        </span>
-        <Button onClick={handleDownload} variant="outline-secondary" className="px-2 py-1 ml-2">
-          <IoMdDownload size={24} />
-        </Button>
+      <div className="d-flex flex-eow bg-light items-center p-1 justify-content-between">
+        <div>
+          <Button onClick={togglePlayPause} variant="outline-primary" className=" px-2 py-1">
+            {isPlaying ? <IoMdPause size={24} /> : <IoMdPlay size={24} />}
+          </Button>
+          <span className="text-sm font-mono mx-2">
+            {formatTime(currentTime)} / {formatTime(duration)}
+          </span>
+          <span className="text-sm font-mono mx-2" style={{ color: currentActivation >= 0 ? 'green' : 'red' }}>
+            Activation: {currentActivation.toFixed(4)}
+          </span>
+          <span className="text-sm font-mono mx-2">
+            Max: <span className="text-sm" style={{ color: 'green' }}> {Math.max(...activations).toFixed(4)}</span>
+          </span>
+          <span className="text-sm font-mono">
+            Min: <span className="text-sm" style={{ color: 'red' }}> {Math.min(...activations).toFixed(4)}</span>
+          </span>
+        </div>
+        <div>
+          <Button onClick={handleDownload} variant="outline-secondary" className="px-2 py-1 ml-2">
+            <IoMdDownload size={24} />
+          </Button>
+        </div>
       </div>
     </div >
   );
