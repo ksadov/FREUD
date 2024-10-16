@@ -4,7 +4,7 @@ import RegionsPlugin from 'wavesurfer.js/dist/plugin/wavesurfer.regions.min.js';
 import SpectrogramPlugin from 'wavesurfer.js/dist/plugin/wavesurfer.spectrogram.min.js';
 import CursorPlugin from 'wavesurfer.js/src/plugin/cursor';
 import Button from 'react-bootstrap/Button';
-import { IoMdPlay, IoMdPause } from "react-icons/io";
+import { IoMdPlay, IoMdPause, IoMdDownload } from "react-icons/io";
 
 const AudioPlayerWithActivation = ({ audioFile, activations, apiBaseUrl }) => {
   const waveformRef = useRef(null);
@@ -136,6 +136,29 @@ const AudioPlayerWithActivation = ({ audioFile, activations, apiBaseUrl }) => {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
   };
 
+  const handleDownload = useCallback(() => {
+    if (apiBaseUrl) {
+      // If we're using an API, we can directly download the file
+      const downloadUrl = `${apiBaseUrl}/audio/${encodeURIComponent(audioFile)}`;
+      window.open(downloadUrl, '_blank');
+    } else {
+      // If we're using a local file, we need to fetch it first
+      fetch(audioFile)
+        .then(response => response.blob())
+        .then(blob => {
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          a.download = audioFile.split('/').pop() || 'audio.wav';
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+        })
+        .catch(error => console.error('Error downloading the file:', error));
+    }
+  }, [audioFile, apiBaseUrl]);
+
   return (
     <div className="mb-4 border rounded border-2 ">
       {/* Container for both waveform and spectrogram to overlay them */}
@@ -161,6 +184,9 @@ const AudioPlayerWithActivation = ({ audioFile, activations, apiBaseUrl }) => {
         <span className="text-sm font-mono">
           Min: <span className="text-sm" style={{ color: 'red' }}> {Math.min(...activations).toFixed(4)}</span>
         </span>
+        <Button onClick={handleDownload} variant="outline-secondary" className="px-2 py-1 ml-2">
+          <IoMdDownload size={24} />
+        </Button>
       </div>
     </div >
   );
