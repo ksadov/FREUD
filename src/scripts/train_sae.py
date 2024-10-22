@@ -55,6 +55,56 @@ def init_dataloader(from_disk: bool, data_path: str, whisper_model: str, sae_che
     return loader, feat_dim, dset_len
 
 
+def topk_feature_extraction(out, mag_vals_dim, batch_idx=None, device=None):
+    # Get the encoded activations and indices
+    detached_encoded = torch.abs(out.encoded.top_acts.detach()).squeeze()
+    detached_idxes = out.encoded.top_indices.squeeze()
+
+    # Create result tensor
+    if batch_idx is not None:
+        encoded_magnitude_values = torch.zeros(mag_vals_dim).to(device)
+    else:
+        encoded_magnitude_values = torch.zeros(
+            (detached_encoded.shape[0], mag_vals_dim)).to(device)
+
+    # Create a mask for each feature index
+    time_steps = detached_encoded.shape[0]
+
+    # Vectorized approach using boolean masking
+    feature_range = torch.arange(mag_vals_dim).to(device)
+
+    # Expand dimensions for broadcasting
+    # [time_steps, num_indices, 1]
+    detached_idxes_expanded = detached_idxes.unsqueeze(-1)
+    feature_range_expanded = feature_range.view(
+        1, 1, -1)    # [1, 1, mag_vals_dim]
+
+    # Create masks for each feature
+    # [time_steps, num_indices, mag_vals_dim]
+    masks = (detached_idxes_expanded == feature_range_expanded)
+
+    # Use the masks to gather relevant values
+    # Expand detached_encoded for broadcasting
+    detached_encoded_expanded = detached_encoded.unsqueeze(
+        -1).expand(-1, -1, mag_vals_dim)
+
+    # Apply masks and get maximum values
+    masked_values = torch.where(
+        masks, detached_encoded_expanded, torch.tensor(-float('inf')))
+    max_values = masked_values.max(dim=0)[0].max(dim=0)[0]
+
+    # Replace -inf with 0 for features that weren't present
+    max_values = torch.where(max_values == -float('inf'),
+                             torch.tensor(0.0), max_values)
+
+    if batch_idx is not None:
+        encoded_magnitude_values = max_values
+    else:
+        encoded_magnitude_values[batch_idx] = max_values
+
+    return encoded_magnitude_values
+
+
 def validate(
     model: L1AutoEncoder | TopKAutoEncoder,
     val_folder: str,
@@ -86,8 +136,7 @@ def validate(
     }
     val_loader, _, _ = init_dataloader(
         from_disk, val_folder, whisper_model_name, None, layer_name, device, 1, 1, None, dl_kwargs)
-    mag_vals_dim = model.n_dict_components if isinstance(
-        model, L1AutoEncoder) else model.cfg.k
+    mag_vals_dim = model.n_dict_components
     encoded_magnitude_values = torch.zeros(
         (len(val_loader), mag_vals_dim)).to(device)
     context_manager = autocast(device_type=str(
@@ -103,11 +152,12 @@ def validate(
             if isinstance(out, L1ForwardOutput):
                 detached_encoded = torch.abs(
                     out.encoded.latent.detach()).squeeze()
+                encoded_max = torch.max(detached_encoded, dim=0).values
+                encoded_magnitude_values[i] = encoded_max
             elif isinstance(out, TopKForwardOutput):
-                detached_encoded = torch.abs(
-                    out.encoded.top_acts.detach()).squeeze()
-            encoded_max = torch.max(detached_encoded, dim=0).values
-            encoded_magnitude_values[i] = encoded_max
+                encoded_magnitude_values[i] = topk_feature_extraction(
+                    out, mag_vals_dim, 1, device)
+
             if isinstance(model, L1AutoEncoder):
                 losses_recon.append(out.reconstruction_loss.item())
                 losses_l1.append(out.l1_loss.item())
@@ -126,8 +176,8 @@ def validate(
 
     model.train()
     print("Calculating means...")
-    encoded_mag_means = torch.mean(
-        encoded_magnitude_values, dim=0).cpu().numpy()
+    encoded_mag_maxes = torch.max(
+        encoded_magnitude_values, dim=0)[0].cpu().numpy()
     print("Calculating stds...")
     encoded_mag_stds = torch.std(encoded_magnitude_values, dim=0).cpu().numpy()
     losses_dict = {
@@ -139,7 +189,7 @@ def validate(
         "mse": np.array(mses).mean()
     }
     return (losses_dict, subbed_transcripts, base_transcripts,
-            base_filenames, encoded_mag_means, encoded_mag_stds)
+            base_filenames, encoded_mag_maxes, encoded_mag_stds)
 
 
 def set_seeds(seed=42):
@@ -381,7 +431,7 @@ def train(seed: int,
             if state["step"] % val_every == 0:
                 print("Validating...")
                 losses_dict, subbed_transcripts, base_transcripts, base_filenames, \
-                    encoded_mag_means, encoded_mag_stds = validate(
+                    encoded_mag_maxes, encoded_mag_stds = validate(
                         model, val_folder, device, whisper_config['layer_name'], whisper_config['model'],
                         not logged_base_transcripts, from_disk
                     )
@@ -409,9 +459,17 @@ def train(seed: int,
                     "val/mse", losses_dict['mse'], state["step"])
 
                 tb_logger.add_histogram(
-                    "val/encoded/magnitude_means", np.array(encoded_mag_means), state["step"])
+                    "val/encoded/magnitude_maxes", np.array(encoded_mag_maxes), state["step"])
                 tb_logger.add_histogram(
                     "val/encoded/magnitude_stds", np.array(encoded_mag_stds), state["step"])
+                # count number of zero activations
+                DEAD_THRESHOLD = 0
+                num_dead = np.count_nonzero(
+                    encoded_mag_maxes <= DEAD_THRESHOLD)
+                tb_logger.add_scalar(
+                    "val/encoded/num_dead", num_dead, state["step"])
+                tb_logger.add_scalar(
+                    "val/encoded/percent_dead", num_dead / encoded_mag_maxes.shape[-1], state["step"])
 
                 for i, transcript in enumerate(subbed_transcripts):
                     tb_logger.add_text(
