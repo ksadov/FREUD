@@ -131,7 +131,7 @@ def top_activations_for_audio(audio_array: np.ndarray, whisper_cache: WhisperAct
     indexed_activations = False
     true_length = activation_length_from_audio_array(audio_array)
     if sae_model:
-        output = sae_model.forward(activations)
+        output = sae_model.forward(activations.to(whisper_cache.device))
         if isinstance(output.encoded, L1EncoderOutput):
             activations = output.encoded.latent
         else:
@@ -164,10 +164,8 @@ def top_activations_for_audio(audio_array: np.ndarray, whisper_cache: WhisperAct
         if indexed_activations:
             act = activation_tensor_from_indexed(
                 top_acts.unsqueeze(0), top_indices.unsqueeze(0), i)
-            print("ACT SHAPE", act.shape)
         else:
             act = activations[:, i]
-            print("ACT SHAPE", act.shape)
         assert act.max(
         ) == v, f"Max activation at index {i} is {act.max()} but expected {v}"
         max_activations.append(act)
@@ -175,6 +173,7 @@ def top_activations_for_audio(audio_array: np.ndarray, whisper_cache: WhisperAct
     return activation_indexes, max_activations
 
 
+@torch.no_grad()
 def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationCache,
                       sae_model: Optional[L1AutoEncoder | TopKAutoEncoder],
                       whisper_subbed: WhisperSubbedActivation, feat_idx: int,
@@ -203,6 +202,7 @@ def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationC
     if sae_model:
         output = sae_model.forward(activations)
         if isinstance(output.encoded, L1EncoderOutput):
+            value_pre_activation = output.encoded.latent[:, :, feat_idx]
             manipulated_value = output.encoded.latent[:,
                                                       :, feat_idx] * manipulation_factor
             manipulated_encoding = output.encoded.latent.clone()
@@ -222,8 +222,12 @@ def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationC
                 manipulated_top_acts.unsqueeze(0), top_indices.unsqueeze(0))
             standard_decoded = sae_model.decode(
                 top_acts.unsqueeze(0), top_indices.unsqueeze(0))
+            value_pre_activation = activation_tensor_from_indexed(
+                top_acts.unsqueeze(0), top_indices.unsqueeze(0), feat_idx)
+            manipulated_value = value_pre_activation * manipulation_factor
     else:
-        manipulated_value = activations[:, :, feat_idx] * manipulation_factor
+        value_pre_activation = activations[:, :, feat_idx]
+        manipulated_value = value_pre_activation * manipulation_factor
         manipulated_encoding = activations.clone()
         manipulated_encoding[:, :, feat_idx] = manipulated_value
         manipulated_decoded = manipulated_encoding
@@ -232,13 +236,10 @@ def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationC
         mel, manipulated_decoded)
     standard_subbed_result = whisper_subbed.forward(mel, standard_decoded)
     baseline_text = None if sae_model is None else baseline_result.text
-    activations_at_index = activations[:, :, feat_idx].squeeze()
-    manipulated_decoded_at_index = manipulated_decoded[:, :, feat_idx].squeeze(
-    )
     activation_trim_length = activation_length_from_audio_array(audio_array)
-    activations_at_index_trimmed = activations_at_index[:activation_trim_length].cpu(
-    )
-    manipulated_decoded_at_index_trimmed = manipulated_decoded_at_index[:activation_trim_length].cpu(
-    )
-    return baseline_text, manipulated_subbed_result.text, standard_subbed_result.text, activations_at_index_trimmed, \
-        manipulated_decoded_at_index_trimmed
+    value_pre_activation_trimmed = value_pre_activation.squeeze()[
+        :activation_trim_length].cpu()
+    manipulated_value_trimmed = manipulated_value.squeeze()[
+        :activation_trim_length].cpu()
+    return baseline_text, manipulated_subbed_result.text, standard_subbed_result.text, value_pre_activation_trimmed, \
+        manipulated_value_trimmed

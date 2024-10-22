@@ -24,7 +24,7 @@ def init_sae_from_checkpoint(checkpoint: str, device: Optional[str | torch.devic
             checkpoint['hparams']['autoencoder_config'])
         model = TopKAutoEncoder(activation_size, cfg)
     model.load_state_dict(checkpoint['model'])
-    model.eval()
+    model.eval().to(device)
     return model
 
 

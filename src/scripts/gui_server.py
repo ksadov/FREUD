@@ -41,7 +41,7 @@ def get_gui_data(config: dict, from_disk: bool, files_to_search: Optional[int]) 
         whisper_cache = init_cache(
             config['whisper_model'], config['layer_name'], config['device'])
         sae_model = init_sae_from_checkpoint(
-            config['sae_model']) if config['sae_model'] is not None else None
+            config['sae_model'], config['device']) if config['sae_model'] is not None else None
     else:
         dataloader = FlyActivationDataLoader(
             config['data_path'],
