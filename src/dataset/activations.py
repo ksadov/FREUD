@@ -118,7 +118,11 @@ class MemoryMappedActivationsDataset(Dataset):
             self.mmap = np.load(self.tensor_file, mmap_mode='r')
         if subset_size is not None:
             self.metadata['filenames'] = self.metadata['filenames'][:subset_size]
-            self.mmap = self.mmap[:subset_size]
+            if self.activation_type == "indexed":
+                self.act_mmap = self.act_mmap[:subset_size]
+                self.idx_mmap = self.idx_mmap[:subset_size]
+            else:
+                self.mmap = self.mmap[:subset_size]
         self.activation_shape = self._get_activation_shape()
 
     def _get_activation_shape(self):
