@@ -163,7 +163,7 @@ def top_activations_for_audio(audio_array: np.ndarray, whisper_cache: WhisperAct
     for i, v in unique_top_activations:
         if indexed_activations:
             act = activation_tensor_from_indexed(
-                top_acts.unsqueeze(0), top_indices.unsqueeze(0), i)
+                top_acts.unsqueeze(0), top_indices.unsqueeze(0), i).squeeze().cpu()
         else:
             act = activations[:, i]
         assert act.max(
