@@ -369,6 +369,10 @@ def train(seed: int,
         print(f"Checkpoint: {start_checkpoint}")
         load_checkpoint(state, start_checkpoint, device=device)
 
+    if isinstance(model, TopKAutoEncoder):
+        num_frames_since_fired = torch.zeros(
+            model.n_dict_components, device=device, dtype=torch.long)
+
     while state["step"] < steps:
         model.train()
         pbar = tqdm(enumerate(train_loader), total=len(
@@ -377,14 +381,25 @@ def train(seed: int,
         for batch_idx, (activations, _) in pbar:
             activations = activations.to(device)
 
+            if isinstance(model, TopKAutoEncoder):
+                did_fire = torch.zeros(model.n_dict_components,
+                                       device=device, dtype=torch.bool)
+
             optimizer.zero_grad()
 
             with autocast(str(device)):
-                out = dist_model(activations)
-                if isinstance(out, L1ForwardOutput):
+                if autoencoder_variant == "l1":
+                    out = dist_model(activations)
                     loss = out.reconstruction_loss + out.l1_loss
                 else:
+                    dead_mask = (num_frames_since_fired >
+                                 autoencoder_config['dead_feature_threshold'])
+                    out = dist_model(activations, dead_mask=dead_mask)
                     loss = out.fvu + out.auxk_loss + out.multi_topk_fvu / 8
+                    did_fire[out.encoded.top_indices.flatten()] = True
+                    num_frames_since_fired += activations.shape[1] * \
+                        activations.shape[0]
+                    num_frames_since_fired[did_fire] = 0
 
             loss.backward()
             torch.nn.utils.clip_grad_norm_(
@@ -421,6 +436,8 @@ def train(seed: int,
                         "train/auxk_loss", meta["auxk_loss"], state["step"])
                     tb_logger.add_scalar(
                         "train/multi_topk_fvu", meta["multi_topk_fvu"], state["step"])
+                    tb_logger.add_scalar(
+                        "train/dead_pct", torch.mean(dead_mask.float()).item(), state["step"])
                 tb_logger.add_scalar(
                     "train/lr", scheduler.get_last_lr()[0], state["step"])
 
@@ -441,7 +458,7 @@ def train(seed: int,
                         f"{state['step']} validation, loss_recon={losses_dict['recon']}, loss_l1={losses_dict['l1']}, mse={losses_dict['mse']}")
                 else:
                     print(
-                        f"{state['step']} validation, fvu={losses_dict['fvu']}, auxk_loss={losses_dict['auxk_loss']}, multi_topk_fvu={losses_dict['multi_topk_fvu']}, mse={losses_dict['mse']}")
+                        f"{state['step']} validation, fvu={losses_dict['fvu']}, auxk_loss={losses_dict['auxk_loss']}, multi_topk_fvu={losses_dict['multi_topk_fvu']}, mse={losses_dict['mse']}, dead_pct={torch.mean(dead_mask.float()).item()}")
 
                 if isinstance(model, L1AutoEncoder):
                     tb_logger.add_scalar(
