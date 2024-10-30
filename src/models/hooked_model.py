@@ -87,8 +87,10 @@ class WhisperActivationCache(BaseActivationModule):
         hook_fn: Optional[Callable] = None,
         model: Optional[torch.nn.Module] = None,
         device: torch.device = torch.device("cuda"),
+        model_name: Optional[str] = None,
     ):
         super().__init__(model, layer_to_cache, hook_fn)
+        self.model_name = model_name
         self.device = device
 
     def custom_forward(
@@ -152,15 +154,17 @@ class WhisperSubbedActivation(torch.nn.Module):
         return hook
 
 
-def init_cache(whisper_model: str, layer_to_cache: str, device: torch.device) -> WhisperActivationCache:
-    whisper_model = whisper.load_model(whisper_model)
+def init_cache(whisper_model_name: str, layer_to_cache: str, device: torch.device) -> WhisperActivationCache:
+    whisper_model = whisper.load_model(whisper_model_name)
     whisper_model.eval()
-    return WhisperActivationCache(model=whisper_model, layer_to_cache=layer_to_cache, device=device)
+    return WhisperActivationCache(model=whisper_model, layer_to_cache=layer_to_cache, device=device, model_name=whisper_model_name)
+
 
 def init_subbed(whisper_model: str, layer_to_cache: str, device: torch.device) -> WhisperSubbedActivation:
     whisper_model = whisper.load_model(whisper_model)
     whisper_model.eval()
     return WhisperSubbedActivation(model=whisper_model, substitution_layer=layer_to_cache, device=device)
+
 
 def activations_from_audio(model: WhisperActivationCache, audio_fname: str) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
     with torch.no_grad():

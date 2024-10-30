@@ -6,6 +6,7 @@ from torch.amp import autocast
 from tqdm import tqdm
 from src.dataset.activations import FlyActivationDataLoader, MemoryMappedActivationDataLoader
 from src.utils.audio_utils import get_mels_from_audio_path
+from src.utils.constants import get_n_mels
 from src.models.hooked_model import WhisperSubbedActivation
 import numpy as np
 import random
@@ -166,7 +167,8 @@ def validate(
                 losses_auxk.append(out.auxk_loss.item())
                 multi_topk_fvu.append(out.multi_topk_fvu.item())
             if i < N_TRANSCRIPTS:
-                mels = get_mels_from_audio_path(device, filenames)
+                n_mels = get_n_mels(whisper_model_name)
+                mels = get_mels_from_audio_path(device, filenames, n_mels)
                 subbed_result = whisper_sub.forward(mels, out.sae_out)
                 subbed_transcripts.append(subbed_result.text)
                 if log_base_transcripts:

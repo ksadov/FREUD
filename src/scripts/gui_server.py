@@ -175,4 +175,4 @@ if __name__ == '__main__':
                         help='Number of files to search (None to search all)')
     args = parser.parse_args()
     init_gui_data(args.config, args.from_disk, args.files_to_search)
-    app.run(debug=True, host='0.0.0.0', port=5555)
+    app.run(debug=True, host='0.0.0.0', port=5555, use_reloader=False)

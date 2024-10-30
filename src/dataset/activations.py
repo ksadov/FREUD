@@ -10,6 +10,7 @@ from src.models.hooked_model import init_cache
 from src.models.l1autoencoder import L1AutoEncoder
 from src.models.topkautoencoder import TopKAutoEncoder
 from src.models.config import L1AutoEncoderConfig, TopKAutoEncoderConfig
+from src.utils.constants import get_n_mels
 
 
 def init_sae_from_checkpoint(checkpoint: str, device: Optional[str | torch.device] = None) -> L1AutoEncoder | TopKAutoEncoder:
@@ -44,7 +45,8 @@ class FlyActivationDataLoader(torch.utils.data.DataLoader):
             self.activation_type = "indexed"
         else:
             self.activation_type = "tensor"
-        self._dataset = AudioDataset(data_path, device)
+        self._dataset = AudioDataset(
+            data_path, device, get_n_mels(whisper_model))
         if subset_size:
             self._dataset = torch.utils.data.Subset(
                 self._dataset, range(subset_size))

@@ -10,6 +10,7 @@ from src.models.l1autoencoder import L1EncoderOutput, L1AutoEncoder
 from src.models.topkautoencoder import TopKAutoEncoder
 from src.models.hooked_model import WhisperActivationCache, WhisperSubbedActivation
 from src.utils.audio_utils import get_mels_from_np_array
+from src.utils.constants import get_n_mels
 
 
 def trim_activation(audio_fname: str, activation: torch.Tensor) -> torch.Tensor:
@@ -124,8 +125,8 @@ def top_activations_for_audio(audio_array: np.ndarray, whisper_cache: WhisperAct
     :return: Tuple of top feature indices and their corresponding values
     :requires: audio_array must be sampled at 16kHz
     """
-
-    mel = get_mels_from_np_array(whisper_cache.device, audio_array)
+    n_mels = get_n_mels(whisper_cache.model_name)
+    mel = get_mels_from_np_array(whisper_cache.device, audio_array, n_mels)
     whisper_cache.forward(mel)
     activations = whisper_cache.activations
     indexed_activations = False
@@ -196,7 +197,8 @@ def manipulate_latent(audio_array: np.ndarray, whisper_cache: WhisperActivationC
     - Substituted activation tensor with manipulation
     :requires: audio_array must be sampled at 16kHz
     """
-    mel = get_mels_from_np_array(whisper_cache.device, audio_array)
+    n_mels = get_n_mels(whisper_cache.model_name)
+    mel = get_mels_from_np_array(whisper_cache.device, audio_array, n_mels)
     baseline_result = whisper_cache.forward(mel)
     activations = whisper_cache.activations.to(whisper_cache.device)
     if sae_model:
