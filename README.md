@@ -2,8 +2,6 @@ This repository contains code for discovering and analyzing intermediate activat
 - Code for training sparse autoencoders on Whisper activations
 - An interactive GUI for inspecting base model activations as well as learned autoencoder features
 
-You can browse learned autoencoder features for Whisper Tiny at TODO.
-
 # Setup
 1. Create a virtual env. I used conda and python 3.10: `conda create -n whisper-interp python=3.10`
 2. Activate your virtual env and install pytorch: `conda init whisper-interp; conda install pytorch -c pytorch`
@@ -11,7 +9,7 @@ You can browse learned autoencoder features for Whisper Tiny at TODO.
 4. Download the LibriSpeech datasets: `python -m src.scripts.download_audio_datasets`
 5. Running the GUI requires [installing NodeJS](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) if it isn't already installed on your machine. Once installed, `cd` into the `gui` directory and run `npm install` to install GUI dependencies.
 
-# General notes
+# General Notes
 1. Config files in `configs/features` and `configs/train` specify `"cuda"` as the device, but you can change this field to `"cpu"` if you're not using an NVIDIA GPU.
 2. If you're low on disk space:
   - You can set the `collect_max` parameter for configs in `config/features` to an integer amount to save activations for only that many files.
@@ -25,8 +23,8 @@ You can browse learned autoencoder features for Whisper Tiny at TODO.
 # Single-neuron interpretability
 According to previous results, ["neurons in the MLP layers of the encoder are highly interpretable."](https://er537.github.io/blog/2023/09/05/whisper_interpretability.html). Follow the steps in this section to replicate the results of section 1.1 of the linked post.
 
-1. Collect MLP activations from the speech dataset: `python -m src.scripts.collect_activations --config configs/features/block_2_mlp_1.json`
-2. Start the GUI server and follow step 3 of General notes to view activations: `python -m src.scripts.gui_server --config configs/features/block_2_mlp_1.json --from_disk`
+1. Collect MLP activations from the speech dataset: `python -m src.scripts.collect_activations --config configs/features/tiny_block_2_mlp_1.json`
+2. Start the GUI server and follow step 3 of #General Notes to view activations: `python -m src.scripts.gui_server --config configs/features/tiny_block_2_mlp_1.json --from_disk`
 
 Interesting things to note:
 - The top activations for the first 50 MLP neurons follow the pattern laid out in the linked section's table. However, when if you look at strongly *negative* activations by setting activation value to 0 and checking "use absolute value", you'll see that the most strongly negative activations are also appear to follow the same pattern!
@@ -41,20 +39,20 @@ If you like, you can repeat the same steps above on the residual stream output o
 # Training an L1-regularized sparse autoencoder on Whisper Tiny activations
 These steps will train an sparse autoencoder dictionary for block 2 of Whisper Tiny, following the autoencoder architecture of [Interpreting OpenAI's Whisper](https://github.com/er537/whisper_interpretability/blob/master/whisper_interpretability/sparse_coding/train/train.py).
 
-1. Collect block 2 activations for the train, validation and test datasets: `python -m src.scripts.collect_activations --config configs/features/replicate_block_2_train; python -m src.scripts.collect_activations --config configs/features/replicate_block_2_dev; python -m src.scripts.collect_activations --config configs/features/replicate_block_2_train;`
-2. Train a SAE: `python -m src.scripts.train_sae --config configs/train/l1autoencoder.json`
+1. Collect block 2 activations for the train, validation and test datasets: `python -m src.scripts.collect_activations --config configs/features/tiny_block_2_train; python -m src.scripts.collect_activations --config configs/features/tiny_block_2_dev; python -m src.scripts.collect_activations --config configs/features/tiny_block_2_test;`
+2. Train a SAE: `python -m src.scripts.train_sae --config configs/train/tiny_l1.json`
 - Tensorboard training logs and checkpoints will be saved to the directory `runs/`
-3. Once the run has completed to your satisfaction, you can collect trained SAE activations: `python -m src.scripts.collect_activations --config configs/features/l1_sae.json`
-4. Start the GUI server and follow step 3 of General notes to view activations:: `python -m src.scripts.gui_server --config configs/features/l1_sae.json --from_disk`
+3. Once the run has completed to your satisfaction, you can collect trained SAE activations: `python -m src.scripts.collect_activations --config configs/features/tiny_l1_sae.json`
+4. Start the GUI server and follow step 3 of General notes to view activations:: `python -m src.scripts.gui_server --config configs/features/tiny_l1_sae.json --from_disk`
 
 # Training a k-sparse autoencoder on Whisper Tiny activations
 These steps will train a sparse autoencoder based on [Eleuther AI's implementation of k-sparse autoencoders](https://github.com/EleutherAI/sae). It uses K-sparsity and AuxK loss introduced by [Gao et al. 2024](https://arxiv.org/abs/2406.04093v1) in order to combat dead dictionary entries.
 
 1. Follow step 1 of the section above to (optionally) collect block 2 activations.
-2. Train a SAE: `python -m src.scripts.train_sae --config configs/train/topkautoencoder.json`
+2. Train a SAE: `python -m src.scripts.train_sae --config configs/train/tiny_topk.json`
 - See step 2 note above for logging and checkpoint information
-3. After the run's completion, collect trained SAE activations: `python -m src.scripts.collect_activations --config configs/features/topk_sae.json`
-4. Start the GUI server and follow step 3 of General notes to view activations:: `python -m src.scripts.gui_server --config configs/features/topk_sae.json --from_disk`
+3. After the run's completion, collect trained SAE activations: `python -m src.scripts.collect_activations --config configs/features/tiny_topk_sae.json`
+4. Start the GUI server and follow step 3 of General notes to view activations:: `python -m src.scripts.gui_server --config configs/features/tiny_topk_sae.json --from_disk`
 
 # Training an L1-regularized  autoencoder on Whisper Large V3 activations
 TODO
