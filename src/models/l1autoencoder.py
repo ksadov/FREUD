@@ -71,6 +71,9 @@ class L1AutoEncoder(nn.Module):
         c = self.encoder(x @ self.decoder.weight + self.encoder_bias)
         return L1EncoderOutput(latent=c)
 
+    def decode(self, c: Float[Tensor, "bsz seq_len n_dict_components"]):  # noqa: F821
+        return self.decoder(c)
+
     def forward(self, x: Float[Tensor, "bsz seq_len d_model"], return_mse: bool = False):  # noqa: F821
         c = self.encode(x).latent
         x_hat = self.decoder(c)

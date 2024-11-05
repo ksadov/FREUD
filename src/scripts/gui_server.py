@@ -41,7 +41,7 @@ def get_gui_data(config: dict, from_disk: bool, files_to_search: Optional[int]) 
         whisper_cache = init_cache(
             config['whisper_model'], config['layer_name'], config['device'])
         sae_model = init_sae_from_checkpoint(
-            config['sae_model']) if config['sae_model'] is not None else None
+            config['sae_model'], config['device']) if config['sae_model'] is not None else None
     else:
         dataloader = FlyActivationDataLoader(
             config['data_path'],
@@ -175,4 +175,4 @@ if __name__ == '__main__':
                         help='Number of files to search (None to search all)')
     args = parser.parse_args()
     init_gui_data(args.config, args.from_disk, args.files_to_search)
-    app.run(debug=True, host='0.0.0.0', port=5555)
+    app.run(debug=True, host='0.0.0.0', port=5555, use_reloader=False)

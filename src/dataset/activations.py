@@ -10,6 +10,7 @@ from src.models.hooked_model import init_cache
 from src.models.l1autoencoder import L1AutoEncoder
 from src.models.topkautoencoder import TopKAutoEncoder
 from src.models.config import L1AutoEncoderConfig, TopKAutoEncoderConfig
+from src.utils.constants import get_n_mels
 
 
 def init_sae_from_checkpoint(checkpoint: str, device: Optional[str | torch.device] = None) -> L1AutoEncoder | TopKAutoEncoder:
@@ -24,7 +25,7 @@ def init_sae_from_checkpoint(checkpoint: str, device: Optional[str | torch.devic
             checkpoint['hparams']['autoencoder_config'])
         model = TopKAutoEncoder(activation_size, cfg)
     model.load_state_dict(checkpoint['model'])
-    model.eval()
+    model.eval().to(device)
     return model
 
 
@@ -44,7 +45,8 @@ class FlyActivationDataLoader(torch.utils.data.DataLoader):
             self.activation_type = "indexed"
         else:
             self.activation_type = "tensor"
-        self._dataset = AudioDataset(data_path, device)
+        self._dataset = AudioDataset(
+            data_path, device, get_n_mels(whisper_model))
         if subset_size:
             self._dataset = torch.utils.data.Subset(
                 self._dataset, range(subset_size))
@@ -118,7 +120,11 @@ class MemoryMappedActivationsDataset(Dataset):
             self.mmap = np.load(self.tensor_file, mmap_mode='r')
         if subset_size is not None:
             self.metadata['filenames'] = self.metadata['filenames'][:subset_size]
-            self.mmap = self.mmap[:subset_size]
+            if self.activation_type == "indexed":
+                self.act_mmap = self.act_mmap[:subset_size]
+                self.idx_mmap = self.idx_mmap[:subset_size]
+            else:
+                self.mmap = self.mmap[:subset_size]
         self.activation_shape = self._get_activation_shape()
 
     def _get_activation_shape(self):

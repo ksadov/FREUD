@@ -7,7 +7,8 @@ import numpy as np
 
 from functools import lru_cache
 
-from src.utils.constants import SAMPLE_RATE, N_FFT, HOP_LENGTH, N_MELS, N_SAMPLES
+from src.utils.constants import SAMPLE_RATE, N_FFT, HOP_LENGTH, N_SAMPLES
+
 
 def is_audio_file(file: str) -> bool:
     """
@@ -99,26 +100,27 @@ def pad_or_trim(array, length: int = N_SAMPLES, *, axis: int = -1):
 
 
 def get_mels_from_audio_path(
-    device, audio_path: str, start_time_s: Optional[float] = None, end_time_s: Optional[float] = None
+    device, audio_path: str, n_mels: int, start_time_s: Optional[float] = None, end_time_s: Optional[float] = None
 ):
     with torch.no_grad():
         audio = load_audio(audio_path)
         if start_time_s is not None and end_time_s is not None:
             audio = trim_audio(audio, start_time_s, end_time_s)
         audio = pad_or_trim(audio.flatten())
-        mels = log_mel_spectrogram(audio, device=device)
+        mels = log_mel_spectrogram(audio, device=device, n_mels=n_mels)
     return mels
 
-def get_mels_from_np_array(device, audio: np.ndarray):
+
+def get_mels_from_np_array(device, audio: np.ndarray, n_mels: int):
     audio = audio.astype(np.float32)
     with torch.no_grad():
         audio = pad_or_trim(audio.flatten())
-        mels = log_mel_spectrogram(audio, device=device)
+        mels = log_mel_spectrogram(audio, device=device, n_mels=n_mels)
     return mels
 
 
 @lru_cache(maxsize=None)
-def mel_filters(device, n_mels: int = N_MELS) -> torch.Tensor:
+def mel_filters(device, n_mels: int) -> torch.Tensor:
     """
     load the mel filterbank matrix for projecting STFT into a Mel spectrogram.
     Allows decoupling librosa dependency; saved using:
@@ -126,17 +128,20 @@ def mel_filters(device, n_mels: int = N_MELS) -> torch.Tensor:
         np.savez_compressed(
             "mel_filters.npz",
             mel_80=librosa.filters.mel(sr=16000, n_fft=400, n_mels=80),
+            mel_128=librosa.filters.mel(sr=16000, n_fft=400, n_mels=128),
         )
     """
-    assert n_mels == 80, f"Unsupported n_mels: {n_mels}"
-    RELATIVE_PATH = "../../assets/mel_filters.npz"
-    with np.load(os.path.join(os.path.dirname(__file__), RELATIVE_PATH)) as f:
+    assert n_mels in {80, 128}, f"Unsupported n_mels: {n_mels}"
+
+    filters_path = os.path.join(os.path.dirname(
+        __file__), "../assets", "mel_filters.npz")
+    with np.load(filters_path, allow_pickle=False) as f:
         return torch.from_numpy(f[f"mel_{n_mels}"]).to(device)
 
 
 def log_mel_spectrogram(
     audio: Union[str, np.ndarray, torch.Tensor],
-    n_mels: int = N_MELS,
+    n_mels: int,
     padding: int = 0,
     device: Optional[Union[str, torch.device]] = None,
 ):
