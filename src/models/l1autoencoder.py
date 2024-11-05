@@ -48,12 +48,14 @@ class L1AutoEncoder(nn.Module):
         self.tied = True  # tie encoder and decoder weights
         self.activation_size = activation_size
         self.n_dict_components = get_n_dict_components(
-            activation_size, cfg.expansion_factor, cfg.n_dict_components)
+            activation_size, cfg.expansion_factor, cfg.n_dict_components
+        )
         self.recon_alpha = cfg.recon_alpha
 
         # Only defining the decoder layer, encoder will share its weights
         self.decoder = nn.Linear(
-            self.n_dict_components, self.activation_size, bias=False)
+            self.n_dict_components, self.activation_size, bias=False
+        )
         # Create a bias layer
         self.encoder_bias = nn.Parameter(torch.zeros(self.n_dict_components))
 
@@ -67,20 +69,27 @@ class L1AutoEncoder(nn.Module):
     def encode(self, x: Float[Tensor, "bsz seq_len d_model"]):  # noqa: F821
         # Apply unit norm constraint to the decoder weights
         self.decoder.weight.data = nn.functional.normalize(
-            self.decoder.weight.data, dim=0)
+            self.decoder.weight.data, dim=0
+        )
         c = self.encoder(x @ self.decoder.weight + self.encoder_bias)
         return L1EncoderOutput(latent=c)
 
     def decode(self, c: Float[Tensor, "bsz seq_len n_dict_components"]):  # noqa: F821
         return self.decoder(c)
 
-    def forward(self, x: Float[Tensor, "bsz seq_len d_model"], return_mse: bool = False):  # noqa: F821
+    def forward(
+        self, x: Float[Tensor, "bsz seq_len d_model"], return_mse: bool = False
+    ):  # noqa: F821
         c = self.encode(x).latent
         x_hat = self.decoder(c)
         loss_l1 = torch.norm(c, 1, dim=2).mean()
         loss_recon = self.recon_alpha * mse_loss(x_hat, x, -1, "mean")
-        forward_output = L1ForwardOutput(sae_out=x_hat, encoded=L1EncoderOutput(c), l1_loss=loss_l1,
-                                         reconstruction_loss=loss_recon)
+        forward_output = L1ForwardOutput(
+            sae_out=x_hat,
+            encoded=L1EncoderOutput(c),
+            l1_loss=loss_l1,
+            reconstruction_loss=loss_recon,
+        )
         if return_mse:
             return forward_output, ((x_hat - x) ** 2).mean()
         return forward_output

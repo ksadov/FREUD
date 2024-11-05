@@ -10,6 +10,7 @@ from src.utils.models import get_n_dict_components
 
 # modified from https://github.com/EleutherAI/sae/tree/main/sae/sae.py
 
+
 # via https://github.com/EleutherAI/sae/tree/main/sae/utils.py
 def eager_decode(top_indices: Tensor, top_acts: Tensor, W_dec: Tensor):
     buf = top_acts.new_zeros(top_acts.shape[:-1] + (W_dec.shape[-1],))
@@ -42,10 +43,7 @@ class TopKForwardOutput(NamedTuple):
 
 class TopKAutoEncoder(nn.Module):
     def __init__(
-        self,
-        activation_size: int,
-        cfg: TopKAutoEncoderConfig,
-        decoder: bool = True
+        self, activation_size: int, cfg: TopKAutoEncoderConfig, decoder: bool = True
     ):
         """
         Autoencoder model for audio features
@@ -59,14 +57,13 @@ class TopKAutoEncoder(nn.Module):
         self.cfg = cfg
         self.d_in = activation_size
         self.n_dict_components = self.n_dict_components = get_n_dict_components(
-            activation_size, cfg.expansion_factor, cfg.n_dict_components)
+            activation_size, cfg.expansion_factor, cfg.n_dict_components
+        )
 
-        self.encoder = nn.Linear(
-            self.d_in, self.n_dict_components)
+        self.encoder = nn.Linear(self.d_in, self.n_dict_components)
         self.encoder.bias.data.zero_()
 
-        self.W_dec = nn.Parameter(
-            self.encoder.weight.data.clone()) if decoder else None
+        self.W_dec = nn.Parameter(self.encoder.weight.data.clone()) if decoder else None
         if decoder and self.cfg.normalize_decoder:
             self.set_decoder_norm_to_unit_norm()
 
@@ -93,8 +90,9 @@ class TopKAutoEncoder(nn.Module):
         y = eager_decode(top_indices, top_acts, self.W_dec.mT)
         return y + self.b_dec
 
-    def forward(self, x: Tensor, dead_mask: Tensor | None = None, return_mse: bool = False) -> \
-            TopKForwardOutput | tuple[TopKForwardOutput, Tensor]:
+    def forward(
+        self, x: Tensor, dead_mask: Tensor | None = None, return_mse: bool = False
+    ) -> TopKForwardOutput | tuple[TopKForwardOutput, Tensor]:
         pre_acts = self.pre_acts(x)
 
         # Decode and compute residual
@@ -134,8 +132,7 @@ class TopKAutoEncoder(nn.Module):
         fvu = l2_loss / total_variance
 
         if self.cfg.multi_topk:
-            top_acts, top_indices = pre_acts.topk(
-                4 * self.cfg.k, sorted=False)
+            top_acts, top_indices = pre_acts.topk(4 * self.cfg.k, sorted=False)
             sae_out = self.decode(top_acts, top_indices)
 
             multi_topk_fvu = (sae_out - x).pow(2).sum() / total_variance
@@ -153,7 +150,7 @@ class TopKAutoEncoder(nn.Module):
             return forward_output, e.pow(2).mean()
         return forward_output
 
-    @ torch.no_grad()
+    @torch.no_grad()
     def set_decoder_norm_to_unit_norm(self):
         assert self.W_dec is not None, "Decoder weight was not initialized."
 
@@ -161,7 +158,7 @@ class TopKAutoEncoder(nn.Module):
         norm = torch.norm(self.W_dec.data, dim=1, keepdim=True)
         self.W_dec.data /= norm + eps
 
-    @ torch.no_grad()
+    @torch.no_grad()
     def remove_gradient_parallel_to_decoder_directions(self):
         assert self.W_dec is not None, "Decoder weight was not initialized."
         assert self.W_dec.grad is not None  # keep pyright happy

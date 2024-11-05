@@ -37,14 +37,21 @@ class BaseActivationModule(ABC):
         self.remove_hooks()
         return model_out
 
-    def substituted_forward(self, x: Float[Tensor, "bsz seq_len n_mels"], substituted_activation: torch.tensor):
+    def substituted_forward(
+        self,
+        x: Float[Tensor, "bsz seq_len n_mels"],
+        substituted_activation: torch.tensor,
+    ):
         pass
 
     def register_hooks(self):
         for name, module in self.model.named_modules():
             if name == self.layer_to_cache:
-                hook_fn = self.hook_fn if self.hook_fn is not None else self._get_caching_hook(
-                    name)
+                hook_fn = (
+                    self.hook_fn
+                    if self.hook_fn is not None
+                    else self._get_caching_hook(name)
+                )
                 forward_hook = module.register_forward_hook(hook_fn)
                 self.hooks.append(forward_hook)
 
@@ -127,7 +134,9 @@ class WhisperSubbedActivation(torch.nn.Module):
         self.device = device
         self.substitution_layer = substitution_layer
 
-    def forward(self, mels: Float[Tensor, "bsz seq_len n_mels"], substitute_activation: Tensor):  # noqa: F821
+    def forward(
+        self, mels: Float[Tensor, "bsz seq_len n_mels"], substitute_activation: Tensor
+    ):  # noqa: F821
         self.model.zero_grad()
         if substitute_activation is not None:
             forward_hook = self.register_hook(substitute_activation)
@@ -154,19 +163,32 @@ class WhisperSubbedActivation(torch.nn.Module):
         return hook
 
 
-def init_cache(whisper_model_name: str, layer_to_cache: str, device: torch.device) -> WhisperActivationCache:
+def init_cache(
+    whisper_model_name: str, layer_to_cache: str, device: torch.device
+) -> WhisperActivationCache:
     whisper_model = whisper.load_model(whisper_model_name)
     whisper_model.eval()
-    return WhisperActivationCache(model=whisper_model, layer_to_cache=layer_to_cache, device=device, model_name=whisper_model_name)
+    return WhisperActivationCache(
+        model=whisper_model,
+        layer_to_cache=layer_to_cache,
+        device=device,
+        model_name=whisper_model_name,
+    )
 
 
-def init_subbed(whisper_model: str, layer_to_cache: str, device: torch.device) -> WhisperSubbedActivation:
+def init_subbed(
+    whisper_model: str, layer_to_cache: str, device: torch.device
+) -> WhisperSubbedActivation:
     whisper_model = whisper.load_model(whisper_model)
     whisper_model.eval()
-    return WhisperSubbedActivation(model=whisper_model, substitution_layer=layer_to_cache, device=device)
+    return WhisperSubbedActivation(
+        model=whisper_model, substitution_layer=layer_to_cache, device=device
+    )
 
 
-def activations_from_audio(model: WhisperActivationCache, audio_fname: str) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
+def activations_from_audio(
+    model: WhisperActivationCache, audio_fname: str
+) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
     with torch.no_grad():
         mel = get_mels_from_audio_path(model.device, audio_fname)
         result = model.forward(mel)

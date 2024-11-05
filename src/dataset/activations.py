@@ -13,18 +13,20 @@ from src.models.config import L1AutoEncoderConfig, TopKAutoEncoderConfig
 from src.utils.constants import get_n_mels
 
 
-def init_sae_from_checkpoint(checkpoint: str, device: Optional[str | torch.device] = None) -> L1AutoEncoder | TopKAutoEncoder:
+def init_sae_from_checkpoint(
+    checkpoint: str, device: Optional[str | torch.device] = None
+) -> L1AutoEncoder | TopKAutoEncoder:
     checkpoint = torch.load(checkpoint, map_location=device)
-    activation_size = checkpoint['hparams']['activation_size']
-    if checkpoint['hparams']['autoencoder_variant'] == 'l1':
-        cfg = L1AutoEncoderConfig.from_dict(
-            checkpoint['hparams']['autoencoder_config'])
+    activation_size = checkpoint["hparams"]["activation_size"]
+    if checkpoint["hparams"]["autoencoder_variant"] == "l1":
+        cfg = L1AutoEncoderConfig.from_dict(checkpoint["hparams"]["autoencoder_config"])
         model = L1AutoEncoder(activation_size, cfg)
     else:
         cfg = TopKAutoEncoderConfig.from_dict(
-            checkpoint['hparams']['autoencoder_config'])
+            checkpoint["hparams"]["autoencoder_config"]
+        )
         model = TopKAutoEncoder(activation_size, cfg)
-    model.load_state_dict(checkpoint['model'])
+    model.load_state_dict(checkpoint["model"])
     model.eval().to(device)
     return model
 
@@ -34,26 +36,34 @@ class FlyActivationDataLoader(torch.utils.data.DataLoader):
     Dataloader for computing Whisper or SAE activations on the fly
     """
 
-    def __init__(self,  data_path: str, whisper_model: str, sae_checkpoint: Optional[str],
-                 layer_name: str, device: str, batch_size: int, dl_max_workers: int,
-                 subset_size: Optional[int] = None, dl_kwargs: dict = {}):
+    def __init__(
+        self,
+        data_path: str,
+        whisper_model: str,
+        sae_checkpoint: Optional[str],
+        layer_name: str,
+        device: str,
+        batch_size: int,
+        dl_max_workers: int,
+        subset_size: Optional[int] = None,
+        dl_kwargs: dict = {},
+    ):
         self.whisper_cache = init_cache(whisper_model, layer_name, device)
         self.whisper_cache.model.eval()
-        self.sae_model = init_sae_from_checkpoint(
-            sae_checkpoint) if sae_checkpoint else None
+        self.sae_model = (
+            init_sae_from_checkpoint(sae_checkpoint) if sae_checkpoint else None
+        )
         if isinstance(self.sae_model, TopKAutoEncoder):
             self.activation_type = "indexed"
         else:
             self.activation_type = "tensor"
-        self._dataset = AudioDataset(
-            data_path, device, get_n_mels(whisper_model))
+        self._dataset = AudioDataset(data_path, device, get_n_mels(whisper_model))
         if subset_size:
-            self._dataset = torch.utils.data.Subset(
-                self._dataset, range(subset_size))
+            self._dataset = torch.utils.data.Subset(self._dataset, range(subset_size))
         dl_kwargs = {
             "batch_size": batch_size,
             "num_workers": dl_max_workers,
-            **dl_kwargs
+            **dl_kwargs,
         }
         self._dataloader = DataLoader(self._dataset, **dl_kwargs)
         self.activation_shape = self._get_activation_shape()
@@ -68,8 +78,9 @@ class FlyActivationDataLoader(torch.utils.data.DataLoader):
                 encoded = self.sae_model.encode(first_activation)
                 return encoded.latent.squeeze().shape
             elif isinstance(self.sae_model, TopKAutoEncoder):
-                temporal_dim = self.sae_model.encode(
-                    first_activation).top_acts.squeeze().shape[0]
+                temporal_dim = (
+                    self.sae_model.encode(first_activation).top_acts.squeeze().shape[0]
+                )
                 feature_dim = self.sae_model.n_dict_components
                 return torch.Size([temporal_dim, feature_dim])
             else:
@@ -96,30 +107,34 @@ class FlyActivationDataLoader(torch.utils.data.DataLoader):
 
 class MemoryMappedActivationsDataset(Dataset):
     """
-    Dataset for activations stored in memory-mapped files geneerated by src.scripts.collect_activations
+    Dataset for activations stored in memory-mapped files geneerated by
+    src.scripts.collect_activations
     """
 
-    def __init__(self, data_path: str, layer_name: str, subset_size: Optional[int] = None):
+    def __init__(
+        self, data_path: str, layer_name: str, subset_size: Optional[int] = None
+    ):
         self.data_path = data_path
         self.layer_name = layer_name
-        self.metadata_file = os.path.join(
-            data_path, f"{layer_name}_metadata.json")
-        with open(self.metadata_file, 'r') as f:
+        self.metadata_file = os.path.join(data_path, f"{layer_name}_metadata.json")
+        with open(self.metadata_file, "r") as f:
             self.metadata = json.load(f)
         self.tensor_file = os.path.join(data_path, f"{layer_name}_tensors.npy")
         if not os.path.exists(self.tensor_file):
             self.activation_value_file = os.path.join(
-                data_path, f"{layer_name}_activation_values.npy")
+                data_path, f"{layer_name}_activation_values.npy"
+            )
             self.feature_index_file = os.path.join(
-                data_path, f"{layer_name}_feature_indices.npy")
+                data_path, f"{layer_name}_feature_indices.npy"
+            )
             self.activation_type = "indexed"
-            self.act_mmap = np.load(self.activation_value_file, mmap_mode='r')
-            self.idx_mmap = np.load(self.feature_index_file, mmap_mode='r')
+            self.act_mmap = np.load(self.activation_value_file, mmap_mode="r")
+            self.idx_mmap = np.load(self.feature_index_file, mmap_mode="r")
         else:
             self.activation_type = "tensor"
-            self.mmap = np.load(self.tensor_file, mmap_mode='r')
+            self.mmap = np.load(self.tensor_file, mmap_mode="r")
         if subset_size is not None:
-            self.metadata['filenames'] = self.metadata['filenames'][:subset_size]
+            self.metadata["filenames"] = self.metadata["filenames"][:subset_size]
             if self.activation_type == "indexed":
                 self.act_mmap = self.act_mmap[:subset_size]
                 self.idx_mmap = self.idx_mmap[:subset_size]
@@ -128,43 +143,51 @@ class MemoryMappedActivationsDataset(Dataset):
         self.activation_shape = self._get_activation_shape()
 
     def _get_activation_shape(self):
-        return self.metadata['activation_shape']
+        return self.metadata["activation_shape"]
 
     def __len__(self):
-        return len(self.metadata['filenames'])
+        return len(self.metadata["filenames"])
 
     def __getitem__(self, idx):
-        filename = self.metadata['filenames'][idx]
+        filename = self.metadata["filenames"][idx]
 
         if self.activation_type == "indexed":
             act_data = self.act_mmap[idx]
-            act_data = torch.from_numpy(
-                act_data.reshape(self.metadata['tensor_shape']))
+            act_data = torch.from_numpy(act_data.reshape(self.metadata["tensor_shape"]))
             idx_data = self.idx_mmap[idx]
-            idx_data = torch.from_numpy(idx_data.reshape(
-                self.metadata['tensor_shape']))
+            idx_data = torch.from_numpy(idx_data.reshape(self.metadata["tensor_shape"]))
             return act_data, idx_data, filename
         else:
             tensor_data = self.mmap[idx]
-            tensor = torch.from_numpy(tensor_data.reshape(
-                self.metadata['tensor_shape']))
+            tensor = torch.from_numpy(
+                tensor_data.reshape(self.metadata["tensor_shape"])
+            )
 
             return tensor, filename
 
 
 class MemoryMappedActivationDataLoader(torch.utils.data.DataLoader):
     """
-    Dataloader for activations stored in memory-mapped files generated by src.scripts.collect_activations
+    Dataloader for activations stored in memory-mapped files generated by
+    src.scripts.collect_activations
     """
 
-    def __init__(self, data_path: str, layer_name: str, batch_size: int, dl_max_workers: int,
-                 subset_size: Optional[int] = None, dl_kwargs: dict = {}):
+    def __init__(
+        self,
+        data_path: str,
+        layer_name: str,
+        batch_size: int,
+        dl_max_workers: int,
+        subset_size: Optional[int] = None,
+        dl_kwargs: dict = {},
+    ):
         self._dataset = MemoryMappedActivationsDataset(
-            data_path, layer_name, subset_size)
+            data_path, layer_name, subset_size
+        )
         dl_kwargs = {
             "batch_size": batch_size,
             "num_workers": dl_max_workers,
-            **dl_kwargs
+            **dl_kwargs,
         }
         super().__init__(self._dataset, **dl_kwargs)
         self.activation_shape = self.dataset.activation_shape

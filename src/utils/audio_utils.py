@@ -80,13 +80,13 @@ def pad_or_trim(array, length: int = N_SAMPLES, *, axis: int = -1):
     if torch.is_tensor(array):
         if array.shape[axis] > length:
             array = array.index_select(
-                dim=axis, index=torch.arange(length, device=array.device))
+                dim=axis, index=torch.arange(length, device=array.device)
+            )
 
         if array.shape[axis] < length:
             pad_widths = [(0, 0)] * array.ndim
             pad_widths[axis] = (0, length - array.shape[axis])
-            array = F.pad(
-                array, [pad for sizes in pad_widths[::-1] for pad in sizes])
+            array = F.pad(array, [pad for sizes in pad_widths[::-1] for pad in sizes])
     else:
         if array.shape[axis] > length:
             array = array.take(indices=range(length), axis=axis)
@@ -100,7 +100,11 @@ def pad_or_trim(array, length: int = N_SAMPLES, *, axis: int = -1):
 
 
 def get_mels_from_audio_path(
-    device, audio_path: str, n_mels: int, start_time_s: Optional[float] = None, end_time_s: Optional[float] = None
+    device,
+    audio_path: str,
+    n_mels: int,
+    start_time_s: Optional[float] = None,
+    end_time_s: Optional[float] = None,
 ):
     with torch.no_grad():
         audio = load_audio(audio_path)
@@ -133,8 +137,9 @@ def mel_filters(device, n_mels: int) -> torch.Tensor:
     """
     assert n_mels in {80, 128}, f"Unsupported n_mels: {n_mels}"
 
-    filters_path = os.path.join(os.path.dirname(
-        __file__), "../assets", "mel_filters.npz")
+    filters_path = os.path.join(
+        os.path.dirname(__file__), "../assets", "mel_filters.npz"
+    )
     with np.load(filters_path, allow_pickle=False) as f:
         return torch.from_numpy(f[f"mel_{n_mels}"]).to(device)
 
@@ -177,8 +182,7 @@ def log_mel_spectrogram(
     if padding > 0:
         audio = F.pad(audio, (0, padding))
     window = torch.hann_window(N_FFT).to(audio.device)
-    stft = torch.stft(audio, N_FFT, HOP_LENGTH,
-                      window=window, return_complex=True)
+    stft = torch.stft(audio, N_FFT, HOP_LENGTH, window=window, return_complex=True)
     magnitudes = stft[..., :-1].abs() ** 2
 
     filters = mel_filters(audio.device, n_mels)

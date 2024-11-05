@@ -13,9 +13,8 @@ N_FRAMES = exact_div(N_SAMPLES, HOP_LENGTH)
 
 N_SAMPLES_PER_TOKEN = HOP_LENGTH * 2  # the initial convolutions has stride 2
 FRAMES_PER_SECOND = exact_div(SAMPLE_RATE, HOP_LENGTH)  # 10ms per audio frame
-TOKENS_PER_SECOND = exact_div(
-    SAMPLE_RATE, N_SAMPLES_PER_TOKEN)  # 20ms per audio token
-TIMESTEP_S = 30/1500
+TOKENS_PER_SECOND = exact_div(SAMPLE_RATE, N_SAMPLES_PER_TOKEN)  # 20ms per audio token
+TIMESTEP_S = 30 / 1500
 
 
 def get_n_mels(whisper_model_name: str):

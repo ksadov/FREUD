@@ -9,8 +9,14 @@ from npy_append_array import NpyAppendArray
 from src.dataset.activations import FlyActivationDataLoader
 
 
-def save_data_for_memory_mapping(metadata_file: Path, data_files: List[Path], data: List[torch.Tensor],
-                                 filenames: List[str], tensor_shape: List[int], activation_shape: List[int]):
+def save_data_for_memory_mapping(
+    metadata_file: Path,
+    data_files: List[Path],
+    data: List[torch.Tensor],
+    filenames: List[str],
+    tensor_shape: List[int],
+    activation_shape: List[int],
+):
     """
     Append data to memory-mappable file(s) and update metadata
 
@@ -20,31 +26,34 @@ def save_data_for_memory_mapping(metadata_file: Path, data_files: List[Path], da
     :param filenames: List of filenames corresponding to the data
     """
     assert len(data[0]) == len(
-        filenames), "Number of data tensors and filenames must match"
+        filenames
+    ), "Number of data tensors and filenames must match"
 
     # Load or initialize metadata
     if os.path.exists(metadata_file):
-        with open(metadata_file, 'r') as f:
+        with open(metadata_file, "r") as f:
             metadata = json.load(f)
     else:
         metadata = {
-            'tensor_shape': tensor_shape,
-            'activation_shape': activation_shape,
-            'filenames': []
+            "tensor_shape": tensor_shape,
+            "activation_shape": activation_shape,
+            "filenames": [],
         }
 
     # Update metadata and prepare new data
     new_data = [[] for _ in data]
     for filename, *tensors in zip(filenames, *data):
-        metadata['filenames'].append(filename)
+        metadata["filenames"].append(filename)
         for i, tensor in enumerate(tensors):
-            if metadata['tensor_shape'] != list(tensor.shape):
+            if metadata["tensor_shape"] != list(tensor.shape):
                 raise ValueError(
-                    f"All tensors must have the same shape as the first tensor. Expected {metadata['tensor_shape'][i]}, got {tensor.shape}")
+                    f"All tensors must have the same shape as the first tensor. "
+                    f"Expected {metadata['tensor_shape'][i]}, got {tensor.shape}"
+                )
             new_data[i].append(tensor.cpu().numpy())
 
     # Save updated metadata
-    with open(metadata_file, 'w') as f:
+    with open(metadata_file, "w") as f:
         json.dump(metadata, f)
 
     # Append data to file(s) using NpyAppendArray
@@ -63,7 +72,7 @@ def get_activations(
     device: torch.device,
     out_folder: str,
     max_workers: int,
-    collect_max: Optional[int]
+    collect_max: Optional[int],
 ):
     """
     Collect activations from whisper_model or sae_model
@@ -79,8 +88,14 @@ def get_activations(
     :param collect_max: Maximum number of samples to collect (optional)
     """
     dataloader = FlyActivationDataLoader(
-        data_path, whisper_model, sae_model, layer_name, device,
-        batch_size, max_workers, collect_max
+        data_path,
+        whisper_model,
+        sae_model,
+        layer_name,
+        device,
+        batch_size,
+        max_workers,
+        collect_max,
     )
 
     metadata_file = Path(out_folder) / f"{layer_name}_metadata.json"
@@ -89,7 +104,7 @@ def get_activations(
     if dataloader.activation_type != "tensor":
         data_files = [
             Path(out_folder) / f"{layer_name}_activation_values.npy",
-            Path(out_folder) / f"{layer_name}_feature_indices.npy"
+            Path(out_folder) / f"{layer_name}_feature_indices.npy",
         ]
 
     # Remove existing files
@@ -112,14 +127,18 @@ def get_activations(
                 tensor_shape = list(act_data[0].shape)
 
             save_data_for_memory_mapping(
-                metadata_file, data_files, data, global_filenames, tensor_shape, dataloader.activation_shape
+                metadata_file,
+                data_files,
+                data,
+                global_filenames,
+                tensor_shape,
+                dataloader.activation_shape,
             )
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str,
-                        help="Path to feature configuration file")
+    parser.add_argument("--config", type=str, help="Path to feature configuration file")
     args = parser.parse_args()
 
     with open(args.config, "r") as f:
@@ -134,7 +153,7 @@ def main():
         config["device"],
         config["out_folder"],
         config["dl_max_workers"],
-        config.get("collect_max")
+        config.get("collect_max"),
     )
 
 

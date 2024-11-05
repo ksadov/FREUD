@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 roots = {
     "librispeech": "https://www.openslr.org/resources/12",
-    "audioset": "https://huggingface.co/datasets/agkphysics/AudioSet/resolve/main/data"
+    "audioset": "https://huggingface.co/datasets/agkphysics/AudioSet/resolve/main/data",
 }
 files = {
     "librispeech": [
@@ -38,7 +38,7 @@ files = {
         "eval07.tar",
         "eval08.tar",
         "ontology.json",
-    ]
+    ],
 }
 
 
@@ -46,20 +46,26 @@ def download_files(output_dir: str, dataset: str):
     """
     Download files corresponding to one of the available datasets (librispeech, audioset)
 
-    :param output_dir: The directory to save the downloaded files (saved within a subdirectory named after the dataset)
+    :param output_dir: The directory to save the downloaded files (saved within a
+    subdirectory named after the dataset)
     :param dataset: The dataset to download
     """
     os.makedirs(output_dir, exist_ok=True)
-    filtered_files = [file for file in files[dataset]
-                      if not os.path.exists(os.path.join(output_dir, file))]
+    filtered_files = [
+        file
+        for file in files[dataset]
+        if not os.path.exists(os.path.join(output_dir, file))
+    ]
     for file in tqdm(filtered_files):
         url = os.path.join(roots[dataset], file)
         output_file = os.path.join(output_dir, file)
         if not os.path.exists(output_file):
             r = requests.get(url, stream=True)
             r.raise_for_status()
-            with open(output_file, 'wb') as f:
-                for chunk in tqdm(r.iter_content(chunk_size=1024), desc=file, unit="KB"):
+            with open(output_file, "wb") as f:
+                for chunk in tqdm(
+                    r.iter_content(chunk_size=1024), desc=file, unit="KB"
+                ):
                     if chunk:
                         f.write(chunk)
     print("All files downloaded to", output_dir)
@@ -82,10 +88,18 @@ def extract_files(file_dir: str):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output_dir", type=str, default="audio_data",
-                        help="The directory to save the downloaded files")
-    parser.add_argument("--dataset", type=str, default="librispeech",
-                        help="The dataset to download (must be one of librispeech, audioset)")
+    parser.add_argument(
+        "--output_dir",
+        type=str,
+        default="audio_data",
+        help="The directory to save the downloaded files",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="librispeech",
+        help="The dataset to download (must be one of librispeech, audioset)",
+    )
     args = parser.parse_args()
     out_dir = os.path.join(args.output_dir, args.dataset)
     if args.dataset not in roots:
