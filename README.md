@@ -9,7 +9,7 @@ You can browse learned autoencoder features for Whisper Tiny at TODO.
 2. Activate your virtual env and install pytorch: `conda init whisper-interp; conda install pytorch -c pytorch`
 3. Install the rest of the dependencies: `pip install -r requirements.txt`
 4. Download the LibriSpeech datasets: `python -m src.scripts.download_audio_datasets`
-5. Running the GUI requires [installing NodeJS](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) if it isn't already installed on your machine.
+5. Running the GUI requires [installing NodeJS](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) if it isn't already installed on your machine. Once installed, `cd` into the `gui` directory and run `npm install` to install GUI dependencies.
 
 # General notes
 1. Config files in `configs/features` and `configs/train` specify `"cuda"` as the device, but you can change this field to `"cpu"` if you're not using an NVIDIA GPU.
