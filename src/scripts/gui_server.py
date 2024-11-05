@@ -26,6 +26,7 @@ class GlobalState:
     whisper_cache: Optional[WhisperActivationCache] = None
     sae_model: Optional[L1AutoEncoder | TopKAutoEncoder] = None
     whisper_subbed: Optional[WhisperSubbedActivation] = None
+    allow_audio_upload: bool = True
 
 
 def get_gui_data(config: dict, from_disk: bool, files_to_search: Optional[int]) -> \
@@ -75,18 +76,19 @@ def get_top_activations(top_fn: Callable, feature_idx: int, n_files: int, max_va
     return top_files, activations, max_per_file
 
 
-def init_gui_data(config_path: str, from_disk: bool, files_to_search: Optional[int]):
+def init_gui_data(config_path: str, from_disk: bool, files_to_search: Optional[int], no_audio_upload: bool):
     with open(config_path, 'r') as f:
         config = json.load(f)
     (GlobalState.top_fn, GlobalState.n_features, GlobalState.layer_name,
      GlobalState.whisper_cache, GlobalState.sae_model, GlobalState.whisper_subbed) = get_gui_data(config, from_disk, files_to_search)
+    GlobalState.allow_audio_upload = not no_audio_upload
     print("GUI data initialized.")
 
 
 @app.route('/status', methods=['GET'])
 def status():
     if GlobalState.top_fn is not None:
-        return jsonify({"status": "Initialization complete", "n_features": GlobalState.n_features, "layer_name": GlobalState.layer_name})
+        return jsonify({"status": "Initialization complete", "n_features": GlobalState.n_features, "layer_name": GlobalState.layer_name, "allow_audio_upload": GlobalState.allow_audio_upload})
     else:
         return jsonify({"status": "Initialization failed"}), 500
 
@@ -173,6 +175,8 @@ if __name__ == '__main__':
                         help='Whether to load activations from disk')
     parser.add_argument('--files_to_search', type=int, default=None,
                         help='Number of files to search (None to search all)')
+    parser.add_argument('--no_audio_upload', action='store_true',
+                        help='Whether to disable audio upload functionality')
     args = parser.parse_args()
-    init_gui_data(args.config, args.from_disk, args.files_to_search)
+    init_gui_data(args.config, args.from_disk, args.files_to_search, args.no_audio_upload)
     app.run(debug=True, host='0.0.0.0', port=5555, use_reloader=False)

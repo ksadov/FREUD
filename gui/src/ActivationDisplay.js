@@ -11,6 +11,7 @@ const ActivationDisplay = () => {
   const [layerName, setLayerName] = useState('');
   const [nFeatures, setNFeatures] = useState(0);
   const [activeKey, setActiveKey] = useState('activationSearch');
+  const [allowAudioUpload, setAllowAudioUpload] = useState(true);
 
   useEffect(() => {
     fetch(`${API_BASE_URL}/status`)
@@ -20,6 +21,7 @@ const ActivationDisplay = () => {
           setIsServerReady(true);
           setLayerName(data.layer_name);
           setNFeatures(data.n_features);
+          setAllowAudioUpload(data.allow_audio_upload ?? true); // Default to true if not specified
         } else {
           setError('Server not ready');
         }
@@ -34,11 +36,17 @@ const ActivationDisplay = () => {
     setActiveKey(key);
   };
 
+  // If audio upload is disabled and that tab is selected, switch to activation search
+  useEffect(() => {
+    if (!allowAudioUpload && activeKey === 'uploadaudio') {
+      setActiveKey('activationSearch');
+    }
+  }, [allowAudioUpload, activeKey]);
+
   return (
     <div className="w-full max-w-3xl mx-auto px-4">
       <h1 className="text-2xl font-bold m-4">{layerName}</h1>
       {error && <p className="text-danger">{error}</p>}
-
       <Tabs
         activeKey={activeKey}
         onSelect={handleTabSelect}
@@ -51,14 +59,14 @@ const ActivationDisplay = () => {
             API_BASE_URL={API_BASE_URL}
           />
         </Tab>
-
-        <Tab eventKey="uploadaudio" title="Upload Audio">
-          <UploadAudioTab
-            API_BASE_URL={API_BASE_URL}
-          />
-        </Tab>
+        {allowAudioUpload && (
+          <Tab eventKey="uploadaudio" title="Upload Audio">
+            <UploadAudioTab
+              API_BASE_URL={API_BASE_URL}
+            />
+          </Tab>
+        )}
       </Tabs>
-
       {!isServerReady && <p className="text-warning">Waiting for server...</p>}
     </div>
   );
