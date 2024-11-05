@@ -1,0 +1,69 @@
+This repository contains code for discovering and analyzing intermediate activations in OpenAI's [Whisper](https://github.com/openai/whisper) model suite. It provides
+- Code for training sparse autoencoders on Whisper activations
+- An interactive GUI for inspecting base model activations as well as learned autoencoder features
+
+You can browse learned autoencoder features for Whisper Tiny at TODO.
+
+# Setup
+1. Create a virtual env. I used conda and python 3.10: `conda create -n whisper-interp python=3.10`
+2. Activate your virtual env and install pytorch: `conda init whisper-interp; conda install pytorch -c pytorch`
+3. Install the rest of the dependencies: `pip install -r requirements.txt`
+4. Download the LibriSpeech datasets: `python -m src.scripts.download_audio_datasets`
+5. Running the GUI requires [installing NodeJS](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) if it isn't already installed on your machine.
+
+# General notes
+1. Config files in `configs/features` and `configs/train` specify `"cuda"` as the device, but you can change this field to `"cpu"` if you're not using an NVIDIA GPU.
+2. If you're low on disk space:
+  - You can set the `collect_max` parameter for configs in `config/features` to an integer amount to save activations for only that many files.
+  - Collection steps are optional, at the cost of slower feature search and training:
+    - For feature search, omit the `--from_disk` flag
+    - For training, set the `from_disk` field in the training config to `false`.
+3. Once you've started the GUI webserver, `cd` into the `gui` directory and run the command `npm run start`. The GUI will be displayed at `http://localhost:3000/`. The client code assumes that the GUI server is running on port 5555 of `localhost`, which will not be the case if you are running the server on a remote machine. In that case, edit the file `gui/src/ActivationDisplay.js` to set `API_BASE_URL` to the correct remote URL.
+4. If you find activation search too slow, set the `--files_to_search` flag of `src.scripts.gui_server` to N in order to search through only N files in the dataset.
+5. I look for interesting features by inputing clips to the Upload Audio tab of the GUI, making note of the top feature indexes for the uploaded clip and then checking if the pattern held for files returned by the Activation Search results for those indexes. I've found this to be a more productive (and fun!) than browsing indexes at random.
+
+# Single-neuron interpretability
+According to previous results, ["neurons in the MLP layers of the encoder are highly interpretable."](https://er537.github.io/blog/2023/09/05/whisper_interpretability.html). Follow the steps in this section to replicate the results of section 1.1 of the linked post.
+
+1. Collect MLP activations from the speech dataset: `python -m src.scripts.collect_activations --config configs/features/block_2_mlp_1.json`
+2. Start the GUI server and follow step 3 of General notes to view activations: `python -m src.scripts.gui_server --config configs/features/block_2_mlp_1.json --from_disk`
+
+Interesting things to note:
+- The top activations for the first 50 MLP neurons follow the pattern laid out in the linked section's table. However, when if you look at strongly *negative* activations by setting activation value to 0 and checking "use absolute value", you'll see that the most strongly negative activations are also appear to follow the same pattern!
+- When MLP neurons correspond to features, those features tend to be phonetic rather than anything of broader semantic meaning. A few potential exceptions:
+  - 1110 activates before pauses between words where you would a comma to appear in the transcript
+  - 38 appears to activate most strongly at the start of an exclamation?
+
+If you like, you can repeat the same steps above on the residual stream output of block 2 rather than just MLP activations. As per section 1.2 of the link, looking at single indices for these activations will fail to yield human-comprehensible features, though some correspond have maybe-interesting activation patterns:
+- 85 alternates high and low on the scale of 0.7 seconds
+- 232 has a strong negative activation roughly equidistant between strong positive activations at the silence before speech
+
+# Training an L1-regularized sparse autoencoder on Whisper Tiny activations
+These steps will train an sparse autoencoder dictionary for block 2 of Whisper Tiny, following the autoencoder architecture of [Interpreting OpenAI's Whisper](https://github.com/er537/whisper_interpretability/blob/master/whisper_interpretability/sparse_coding/train/train.py).
+
+1. Collect block 2 activations for the train, validation and test datasets: `python -m src.scripts.collect_activations --config configs/features/replicate_block_2_train; python -m src.scripts.collect_activations --config configs/features/replicate_block_2_dev; python -m src.scripts.collect_activations --config configs/features/replicate_block_2_train;`
+2. Train a SAE: `python -m src.scripts.train_sae --config configs/train/l1autoencoder.json`
+- Tensorboard training logs and checkpoints will be saved to the directory `runs/`
+3. Once the run has completed to your satisfaction, you can collect trained SAE activations: `python -m src.scripts.collect_activations --config configs/features/l1_sae.json`
+4. Start the GUI server and follow step 3 of General notes to view activations:: `python -m src.scripts.gui_server --config configs/features/l1_sae.json --from_disk`
+
+# Training a k-sparse autoencoder on Whisper Tiny activations
+These steps will train a sparse autoencoder based on [Eleuther AI's implementation of k-sparse autoencoders](https://github.com/EleutherAI/sae). It uses K-sparsity and AuxK loss introduced by [Gao et al. 2024](https://arxiv.org/abs/2406.04093v1) in order to combat dead dictionary entries.
+
+1. Follow step 1 of the section above to (optionally) collect block 2 activations.
+2. Train a SAE: `python -m src.scripts.train_sae --config configs/train/topkautoencoder.json`
+- See step 2 note above for logging and checkpoint information
+3. After the run's completion, collect trained SAE activations: `python -m src.scripts.collect_activations --config configs/features/topk_sae.json`
+4. Start the GUI server and follow step 3 of General notes to view activations:: `python -m src.scripts.gui_server --config configs/features/topk_sae.json --from_disk`
+
+# Training an L1-regularized  autoencoder on Whisper Large V3 activations
+TODO
+
+# Training an L1-regularized autoencoder on Whisper Large sound effect activations
+[Gong et al. 2023](https://www.isca-archive.org/interspeech_2023/gong23d_interspeech.pdf) demonstrated that unlike most ASR models, Whisper Large encodes information about background noise deep into its intermediate representation. These steps train a sparse autoencoder on activations obtained using the same Whisper model and dataset as the linked paper.
+
+1. Download the AudioSet dataset: `python -m src.scripts.download_audio_datasets --dataset audioset`
+2. Collect activations: TODO
+3. Train a SAE: TODO
+4. Collect SAE activations: TODO
+5. Start the GUI server and follow step 3 of General notes to view activations:: TODO
