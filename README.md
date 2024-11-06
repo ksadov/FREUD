@@ -8,6 +8,7 @@ This repository contains code for discovering and analyzing intermediate activat
 3. Install the rest of the dependencies: `pip install -r requirements.txt`
 4. Download the LibriSpeech datasets: `python -m src.scripts.download_audio_datasets`
 5. Running the GUI requires [installing NodeJS](https://docs.npmjs.com/downloading-and-installing-node-js-and-npm) if it isn't already installed on your machine. Once installed, `cd` into the `gui` directory and run `npm install` to install GUI dependencies.
+6. Install ffmpeg if it isn't already installed on your machine.
 
 # General Notes
 1. Config files in `configs/features` and `configs/train` specify `"cuda"` as the device, but you can change this field to `"cpu"` if you're not using an NVIDIA GPU.
@@ -23,8 +24,8 @@ This repository contains code for discovering and analyzing intermediate activat
 # Single-neuron interpretability
 According to previous results, ["neurons in the MLP layers of the encoder are highly interpretable."](https://er537.github.io/blog/2023/09/05/whisper_interpretability.html). Follow the steps in this section to replicate the results of section 1.1 of the linked post.
 
-1. Collect MLP activations from the speech dataset: `python -m src.scripts.collect_activations --config configs/features/tiny_block_2_mlp_1.json`
-2. Start the GUI server and follow step 3 of #General Notes to view activations: `python -m src.scripts.gui_server --config configs/features/tiny_block_2_mlp_1.json --from_disk`
+1. Collect MLP activations from the speech dataset: `python -m src.scripts.collect_activations --config configs/features/tiny_block_2_mlp_1_test.json`
+2. Start the GUI server and follow step 3 of #General Notes to view activations: `python -m src.scripts.gui_server --config configs/features/tiny_block_2_mlp_1_test.json --from_disk`
 
 Interesting things to note:
 - The top activations for the first 50 MLP neurons follow the pattern laid out in the linked section's table. However, when if you look at strongly *negative* activations by setting activation value to 0 and checking "use absolute value", you'll see that the most strongly negative activations are also appear to follow the same pattern!
