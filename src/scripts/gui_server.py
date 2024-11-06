@@ -264,6 +264,14 @@ def upload_and_manipulate_audio():
     )
 
 
+def create_app(
+    config_path=None, from_disk=False, files_to_search=None, no_audio_upload=False
+):
+    if config_path:
+        init_gui_data(config_path, from_disk, files_to_search, no_audio_upload)
+    return app
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
