@@ -2,6 +2,9 @@ This repository contains code for discovering and analyzing intermediate activat
 - Code for training sparse autoencoders on Whisper activations
 - An interactive GUI for inspecting base model activations as well as learned autoencoder features
 
+# Demo
+You can demo the GUI [here](https://feature-demo.ksadov.com/). Input an MLP neuron index and see melspecs of audio that strongly activate that feature with that neuron's activation values overlaid, i.e strong activations for index 0 correspond to an "m" phoneme. You can also a record or upload short audio clip and see which features it activates most strongly.
+
 # Setup
 1. Create a virtual env. I used conda and python 3.10: `conda create -n whisper-interp python=3.10`
 2. Activate your virtual env and install pytorch: `conda init whisper-interp; conda install pytorch -c pytorch`
@@ -25,7 +28,7 @@ This repository contains code for discovering and analyzing intermediate activat
 According to previous results, ["neurons in the MLP layers of the encoder are highly interpretable."](https://er537.github.io/blog/2023/09/05/whisper_interpretability.html). Follow the steps in this section to replicate the results of section 1.1 of the linked post.
 
 1. Collect MLP activations from the speech dataset: `python -m src.scripts.collect_activations --config configs/features/tiny_block_2_mlp_1_test.json`
-2. Start the GUI server and follow step 3 of #General Notes to view activations: `python -m src.scripts.gui_server --config configs/features/tiny_block_2_mlp_1_test.json --from_disk`
+2. Start the GUI server and follow step 3 of #General Notes to view activations: `python -m src.scripts.gui_server --config configs/features/tiny_block_2_mlp_1.json --from_disk`
 
 Interesting things to note:
 - The top activations for the first 50 MLP neurons follow the pattern laid out in the linked section's table. However, when if you look at strongly *negative* activations by setting activation value to 0 and checking "use absolute value", you'll see that the most strongly negative activations are also appear to follow the same pattern!
