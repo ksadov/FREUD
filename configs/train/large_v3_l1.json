@@ -1,0 +1,32 @@
+{
+  "whisper_config": {
+    "model": "large-v3",
+    "layer_name": "encoder.blocks.16"
+  },
+  "autoencoder_variant": "l1",
+  "autoencoder_config": {
+    "expansion_factor": 32,
+    "recon_alpha": 1e4
+  },
+  "seed": 0,
+  "train_folder": "activations/block_16_v3_train_small",
+  "val_folder": "activations/block_16_v3_dev",
+  "device": "cuda",
+  "run_dir": "runs/l1autoencoder_large_v3_expansion_32",
+  "lr": 1e-4,
+  "weight_decay": 0.0,
+  "steps": 25000,
+  "clip_thresh": 1.0,
+  "batch_size": 16,
+  "dl_max_workers": 0,
+  "log_tb_every": 10,
+  "save_every": 1000,
+  "val_every": 100,
+  "optimizer": "adam",
+  "scheduler": "linear",
+  "scheduler_params": {
+    "num_warmup_steps": 1000
+  },
+  "start_checkpoint": null,
+  "from_disk": true
+}

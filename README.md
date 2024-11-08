@@ -58,8 +58,11 @@ These steps will train a sparse autoencoder based on [Eleuther AI's implementati
 3. After the run's completion, collect trained SAE activations: `python -m src.scripts.collect_activations --config configs/features/tiny_topk_sae.json`
 4. Start the GUI server and follow step 3 of General notes to view activations:: `python -m src.scripts.gui_server --config configs/features/tiny_topk_sae.json --from_disk`
 
-# Training an L1-regularized  autoencoder on Whisper Large V3 activations
-TODO
+# Training an L1-regularized autoencoder on Whisper Large V3 activations
+1. Collect block 16 activations for the train and validation datasets: `python -m src.scripts.collect_activations --config configs/features/large_v3_block_16_train_10k.json; python -m src.scripts.collect_activations --config configs/features/large_v3_block_16_dev`
+- To economize disk space `configs/features/large_v3_block_16_train_10k.json` only collects activations for 10000 files, but you can alter that number in the config as you wish (or omit caching activations to disk altogether, see General Note 2)
+3. Once the run has completed, collect trained SAE activations: `python -m src.scripts.collect_activations --config configs/features/large_v3_l1_sae.json`
+4. Start the GUI server and follow step 3 of General notes to view activations: `python -m src.scripts.gui_server --config configs/features/large_v3_l1_sae.json --from_disk`
 
 # Training an L1-regularized autoencoder on Whisper Large sound effect activations
 [Gong et al. 2023](https://www.isca-archive.org/interspeech_2023/gong23d_interspeech.pdf) demonstrated that unlike most ASR models, Whisper Large encodes information about background noise deep into its intermediate representation. These steps train a sparse autoencoder on activations obtained using the same Whisper model and dataset as the linked paper.
