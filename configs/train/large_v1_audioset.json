@@ -1,0 +1,36 @@
+{
+  "whisper_config": {
+    "model": "large-v1",
+    "layer_name": "encoder.blocks.16"
+  },
+  "autoencoder_variant": "topk",
+  "autoencoder_config": {
+    "expansion_factor": 16,
+    "normalize_decoder": true,
+    "k": 32,
+    "multi_topk": false,
+    "auxk_alpha": 0.03125,
+    "dead_feature_threshold": 1000000.0
+  },
+  "seed": 0,
+  "train_folder": "activations/large_v1_block_16_audioset_train",
+  "val_folder": "activations/large_v1_block_16_audioset_eval",
+  "device": "cuda",
+  "run_dir": "runs/large_v1_block_16_audioset_topk",
+  "lr": 1e-4,
+  "weight_decay": 0.0,
+  "steps": 25000,
+  "clip_thresh": 1.0,
+  "batch_size": 32,
+  "dl_max_workers": 0,
+  "log_tb_every": 10,
+  "save_every": 1000,
+  "val_every": 100,
+  "optimizer": "adam",
+  "scheduler": "linear",
+  "scheduler_params": {
+    "num_warmup_steps": 1000
+  },
+  "start_checkpoint": null,
+  "from_disk": true
+}
