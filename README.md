@@ -65,10 +65,10 @@ These steps will train a sparse autoencoder based on [Eleuther AI's implementati
 4. Start the GUI server and follow step 3 of General notes to view activations: `python -m src.scripts.gui_server --config configs/features/large_v3_l1_sae.json --from_disk`
 
 # Training an L1-regularized autoencoder on Whisper Large sound effect activations
-[Gong et al. 2023](https://www.isca-archive.org/interspeech_2023/gong23d_interspeech.pdf) demonstrated that unlike most ASR models, Whisper Large encodes information about background noise deep into its intermediate representation. These steps train a sparse autoencoder on activations obtained using the same Whisper model and dataset as the linked paper.
+[Gong et al. 2023](https://www.isca-archive.org/interspeech_2023/gong23d_interspeech.pdf) demonstrated that unlike most ASR models, Whisper Large encodes information about background noise deep into its intermediate representation. Following the paper, we train on the [AudioSet](https://research.google.com/audioset/) dataset and test on [ESC-50](https://github.com/karolpiczak/ESC-50). I found that L1-regularized SAE training to be unstable, so I trained a k-sparse one.
 
-1. Download the AudioSet dataset: `python -m src.scripts.download_audio_datasets --dataset audioset`
-2. Collect activations: TODO
-3. Train a SAE: TODO
-4. Collect SAE activations: TODO
-5. Start the GUI server and follow step 3 of General notes to view activations:: TODO
+1. Download the AudioSet and ESC-50 datasets: `python -m src.scripts.download_audio_datasets --dataset audioset; python -m src.scripts.download_audio_datasets --dataset esc-50`
+2. Collect activations: `python -m src.scripts.collect_activations --config configs/features/large_v1_block_16_audioset_train.json; python -m src.scripts.collect_activations --config configs/features/large_v1_block_16_audioset_train.json;`
+3. Train a SAE: `python -m src.scripts.train_sae --config configs/train/tiny_topk.json`
+4. Collect SAE activations: `python -m src.scripts.collect_activations --config configs/features/topk_large_v1_whisper-at.json`
+5. Start the GUI server and follow step 3 of General notes to view activations: `python -m src.scripts.gui_server --config configs/features/topk_large_v1_whisper-at.json --from_disk`
