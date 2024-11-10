@@ -20,7 +20,11 @@ def trim_activation(audio_fname: str, activation: torch.Tensor) -> torch.Tensor:
     """
     Trim the activation tensor to match the duration of the audio file
     """
-    audio_duration = torchaudio.info(audio_fname).num_frames / SAMPLE_RATE
+    audio = torchaudio.load(audio_fname)[0]
+    if audio.shape[0] == 2:
+        audio = audio.mean(dim=0)
+    audio_sample_rate = torchaudio.info(audio_fname).sample_rate
+    audio_duration = audio.shape[1] / audio_sample_rate
     n_frames = int(audio_duration / TIMESTEP_S)
     return activation[:n_frames]
 
