@@ -1,6 +1,6 @@
 {
   "whisper_model": "tiny",
-  "sae_model": null,
+  "sae_model": "runs/l1autoencoder_baseline/checkpoints/bestval.pth",
   "layer_name": "encoder.blocks.2",
   "batch_size": 160,
   "data_path": "audio_data/librispeech/LibriSpeech/test-other",

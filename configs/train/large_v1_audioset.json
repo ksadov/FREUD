@@ -16,7 +16,7 @@
   "train_folder": "activations/large_v1_block_16_audioset_train",
   "val_folder": "activations/large_v1_block_16_audioset_eval",
   "device": "cuda",
-  "run_dir": "runs/large_v1_block_16_audioset_topk",
+  "run_dir": "runs/large_v1_block_16_audioset_topk_16",
   "lr": 1e-4,
   "weight_decay": 0.0,
   "steps": 25000,

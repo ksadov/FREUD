@@ -5,14 +5,14 @@
   },
   "autoencoder_variant": "l1",
   "autoencoder_config": {
-    "expansion_factor": 32,
+    "expansion_factor": 16,
     "recon_alpha": 1e4
   },
   "seed": 0,
   "train_folder": "activations/block_16_v3_train_10k",
   "val_folder": "activations/block_16_v3_dev",
   "device": "cuda",
-  "run_dir": "runs/l1autoencoder_large_v3_expansion_32",
+  "run_dir": "runs/large_v3_l1",
   "lr": 1e-4,
   "weight_decay": 0.0,
   "steps": 25000,

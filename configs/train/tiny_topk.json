@@ -13,8 +13,8 @@
     "dead_feature_threshold": 1000000.0
   },
   "seed": 0,
-  "train_folder": "activations/replicate_block_2_train",
-  "val_folder": "activations/replicate_block_2_dev",
+  "train_folder": "activations/tiny_block_2_train",
+  "val_folder": "activations/tiny_block_2_dev",
   "device": "cuda",
   "run_dir": "runs/topkautoencoder_baseline",
   "lr": 1e-4,
