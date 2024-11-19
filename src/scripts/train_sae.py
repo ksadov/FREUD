@@ -572,6 +572,9 @@ def train(
                         )
                     for i, filename in enumerate(base_filenames):
                         audio = torchaudio.load(filename)[0]
+                        # if stereo, take average of channels
+                        if audio.shape[0] == 2:
+                            audio = audio.mean(dim=0)
                         tb_logger.add_audio(
                             f"val/transcripts/audio_{i}",
                             audio,

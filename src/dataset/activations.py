@@ -48,10 +48,11 @@ class FlyActivationDataLoader(torch.utils.data.DataLoader):
         subset_size: Optional[int] = None,
         dl_kwargs: dict = {},
     ):
+        self.device = device
         self.whisper_cache = init_cache(whisper_model, layer_name, device)
         self.whisper_cache.model.eval()
         self.sae_model = (
-            init_sae_from_checkpoint(sae_checkpoint) if sae_checkpoint else None
+            init_sae_from_checkpoint(sae_checkpoint, device=device) if sae_checkpoint else None
         )
         if isinstance(self.sae_model, TopKAutoEncoder):
             self.activation_type = "indexed"
@@ -75,11 +76,11 @@ class FlyActivationDataLoader(torch.utils.data.DataLoader):
             self.whisper_cache.forward(mels)
             first_activation = self.whisper_cache.activations[0]
             if isinstance(self.sae_model, L1AutoEncoder):
-                encoded = self.sae_model.encode(first_activation)
+                encoded = self.sae_model.encode(first_activation.to(self.device))
                 return encoded.latent.squeeze().shape
             elif isinstance(self.sae_model, TopKAutoEncoder):
                 temporal_dim = (
-                    self.sae_model.encode(first_activation).top_acts.squeeze().shape[0]
+                    self.sae_model.encode(first_activation.to(self.device)).top_acts.squeeze().shape[0]
                 )
                 feature_dim = self.sae_model.n_dict_components
                 return torch.Size([temporal_dim, feature_dim])
@@ -91,13 +92,20 @@ class FlyActivationDataLoader(torch.utils.data.DataLoader):
             self.whisper_cache.reset_state()
             mels, global_file_names = batch
             self.whisper_cache.forward(mels)
-            activations = self.whisper_cache.activations
+            activations = self.whisper_cache.activations.to(self.device)
             if isinstance(self.sae_model, L1AutoEncoder):
                 encoded = self.sae_model.encode(activations)
-                yield encoded.latent, global_file_names
+                latent = encoded.latent.detach().clone()
+                del encoded
+                del activations
+                yield latent, global_file_names
             elif isinstance(self.sae_model, TopKAutoEncoder):
                 encoded = self.sae_model.encode(activations)
-                yield encoded.top_acts, encoded.top_indices, global_file_names
+                top_acts = encoded.top_acts.detach().clone()
+                top_indices = encoded.top_indices.detach().clone()
+                del encoded
+                del activations
+                yield top_acts, top_indices, global_file_names
             else:
                 yield activations, global_file_names
 

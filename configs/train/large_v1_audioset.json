@@ -1,7 +1,7 @@
 {
   "whisper_config": {
-    "model": "tiny",
-    "layer_name": "encoder.blocks.2"
+    "model": "large-v1",
+    "layer_name": "encoder.blocks.16"
   },
   "autoencoder_variant": "topk",
   "autoencoder_config": {
@@ -13,15 +13,15 @@
     "dead_feature_threshold": 1000000.0
   },
   "seed": 0,
-  "train_folder": "activations/tiny_block_2_train",
-  "val_folder": "activations/tiny_block_2_dev",
+  "train_folder": "activations/large_v1_block_16_audioset_train",
+  "val_folder": "activations/large_v1_block_16_audioset_eval",
   "device": "cuda",
-  "run_dir": "runs/topkautoencoder_baseline",
+  "run_dir": "runs/large_v1_block_16_audioset_topk_16",
   "lr": 1e-4,
   "weight_decay": 0.0,
-  "steps": 100000,
+  "steps": 25000,
   "clip_thresh": 1.0,
-  "batch_size": 50,
+  "batch_size": 32,
   "dl_max_workers": 0,
   "log_tb_every": 10,
   "save_every": 1000,

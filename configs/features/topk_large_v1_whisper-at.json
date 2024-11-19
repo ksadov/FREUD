@@ -1,0 +1,11 @@
+{
+  "whisper_model": "large-v1",
+  "sae_model": "runs/large_v1_block_16_audioset_topk_16/checkpoints/bestval.pth",
+  "layer_name": "encoder.blocks.16",
+  "batch_size": 16,
+  "data_path": "audio_data/esc-50/ESC-50-master/audio",
+  "device": "cuda",
+  "out_folder": "activations/topk_large_v1_esc-50",
+  "dl_max_workers": 0,
+  "collect_max": 500
+}

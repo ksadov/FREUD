@@ -8,6 +8,7 @@ from tqdm import tqdm
 roots = {
     "librispeech": "https://www.openslr.org/resources/12",
     "audioset": "https://huggingface.co/datasets/agkphysics/AudioSet/resolve/main/data",
+    "esc-50": "https://github.com/karoldvl/ESC-50/archive/"
 }
 files = {
     "librispeech": [
@@ -39,6 +40,7 @@ files = {
         "eval08.tar",
         "ontology.json",
     ],
+    "esc-50": ["master.zip"]
 }
 
 
@@ -73,15 +75,19 @@ def download_files(output_dir: str, dataset: str):
 
 def extract_files(file_dir: str):
     """
-    Extract all tar files in the given directory and remove the tar files after extraction
+    Extract all compressed files in the given directory and remove the compressed file after extraction
 
-    :param file_dir: The directory containing the tar files to extract
+    :param file_dir: The directory containing the compressed files to extract
     """
     for file in tqdm(os.listdir(file_dir)):
         if ".tar" in file:
             file_path = os.path.join(file_dir, file)
             with tarfile.open(file_path) as tar:
                 tar.extractall(file_dir)
+            os.remove(file_path)
+        elif ".zip" in file:
+            file_path = os.path.join(file_dir, file)
+            os.system(f"unzip {file_path} -d {file_dir}")
             os.remove(file_path)
     print("All files extracted in", file_dir)
 
@@ -98,7 +104,7 @@ def main():
         "--dataset",
         type=str,
         default="librispeech",
-        help="The dataset to download (must be one of librispeech, audioset)",
+        help="The dataset to download (must be one of librispeech, audioset, esc-50)",
     )
     args = parser.parse_args()
     out_dir = os.path.join(args.output_dir, args.dataset)

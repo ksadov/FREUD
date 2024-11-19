@@ -5,7 +5,7 @@
   "batch_size": 160,
   "data_path": "audio_data/librispeech/LibriSpeech/dev-other",
   "device": "cuda",
-  "out_folder": "activations/replicate_block_2_dev",
+  "out_folder": "activations/tiny_block_2_dev",
   "dl_max_workers": 0,
   "collect_max": null
 }
