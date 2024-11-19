@@ -1,6 +1,10 @@
-This repository contains code for discovering and analyzing intermediate activations in OpenAI's [Whisper](https://github.com/openai/whisper) model suite. It provides
-- Code for training sparse autoencoders on Whisper activations
+![](gui/src/logo.svg)
+
+FREUD (**F**eature **R**etrieval, **E**diting and **U**nderstanding for **D**evelopers) is a codebase for discovering and analyzing intermediate activations in audio models. It provides
+- Code for training sparse autoencoders on audio model activations
 - An interactive GUI for inspecting base model activations as well as learned autoencoder features
+
+Currently, it is compatible with OpenAI's [Whisper](https://github.com/openai/whisper) family of models.
 
 # Demo
 You can demo the GUI [here](https://feature-demo.ksadov.com/). Input an MLP neuron index and see melspecs of audio that strongly activate that feature with that neuron's activation values overlaid, i.e strong activations for index 0 correspond to an "m" phoneme. You can also a record or upload short audio clip and see which features it activates most strongly.
