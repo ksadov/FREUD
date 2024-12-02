@@ -6,6 +6,7 @@ FREUD (**F**eature **R**etrieval, **E**diting and **U**nderstanding for **D**eve
 
 Currently, it is compatible with OpenAI's [Whisper](https://github.com/openai/whisper) family of models.
 
+Checkpoints with the corresponding training run logs are available on [Huggingface](https://huggingface.co/collections/cherrvak/whisper-sparse-autoencoders-673bbfc58f51fde3c5b23754).
 # Demo
 You can demo the GUI [here](https://feature-demo.ksadov.com/). Input an MLP neuron index and see melspecs of audio that strongly activate that feature with that neuron's activation values overlaid, i.e strong activations for index 0 correspond to an "m" phoneme. You can also a record or upload short audio clip and see which features it activates most strongly.
 
