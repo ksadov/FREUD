@@ -54,8 +54,8 @@ These steps will train an sparse autoencoder dictionary for block 2 of Whisper T
 3. Once the run has completed to your satisfaction, you can collect trained SAE activations: `python -m src.scripts.collect_activations --config configs/features/tiny_l1_sae.json`
 4. Start the GUI server and follow step 3 of General notes to view activations:: `python -m src.scripts.gui_server --config configs/features/tiny_l1_sae.json --from_disk`
 
-# Training a k-sparse autoencoder on Whisper Tiny activations
-These steps will train a sparse autoencoder based on [Eleuther AI's implementation of k-sparse autoencoders](https://github.com/EleutherAI/sae). It uses K-sparsity and AuxK loss introduced by [Gao et al. 2024](https://arxiv.org/abs/2406.04093v1) in order to combat dead dictionary entries.
+# Training a TopK autoencoder on Whisper Tiny activations
+These steps will train a sparse autoencoder based on [Eleuther AI's implementation of TopK autoencoders](https://github.com/EleutherAI/sae). It uses TopK activation and AuxK loss introduced by [Gao et al. 2024](https://arxiv.org/abs/2406.04093v1) in order to combat dead dictionary entries.
 
 1. Follow step 1 of the section above to (optionally) collect block 2 activations.
 2. Train a SAE: `python -m src.scripts.train_sae --config configs/train/tiny_topk.json`
@@ -70,7 +70,7 @@ These steps will train a sparse autoencoder based on [Eleuther AI's implementati
 4. Start the GUI server and follow step 3 of General notes to view activations: `python -m src.scripts.gui_server --config configs/features/large_v3_l1_sae.json --from_disk`
 
 # Training an L1-regularized autoencoder on Whisper Large sound effect activations
-[Gong et al. 2023](https://www.isca-archive.org/interspeech_2023/gong23d_interspeech.pdf) demonstrated that unlike most ASR models, Whisper Large encodes information about background noise deep into its intermediate representation. Following the paper, we train on the [AudioSet](https://research.google.com/audioset/) dataset and test on [ESC-50](https://github.com/karolpiczak/ESC-50). I found that L1-regularized SAE training to be unstable, so I trained a k-sparse one.
+[Gong et al. 2023](https://www.isca-archive.org/interspeech_2023/gong23d_interspeech.pdf) demonstrated that unlike most ASR models, Whisper Large encodes information about background noise deep into its intermediate representation. Following the paper, we train on the [AudioSet](https://research.google.com/audioset/) dataset and test on [ESC-50](https://github.com/karolpiczak/ESC-50). I found that L1-regularized SAE training to be unstable, so I trained a TopK one.
 
 1. Download the AudioSet and ESC-50 datasets: `python -m src.scripts.download_audio_datasets --dataset audioset; python -m src.scripts.download_audio_datasets --dataset esc-50`
 2. Collect activations: `python -m src.scripts.collect_activations --config configs/features/large_v1_block_16_audioset_train.json; python -m src.scripts.collect_activations --config configs/features/large_v1_block_16_audioset_train.json;`
