@@ -69,7 +69,7 @@ These steps will train a sparse autoencoder based on [Eleuther AI's implementati
 3. Once the run has completed, collect trained SAE activations: `python -m src.scripts.collect_activations --config configs/features/large_v3_l1_sae.json`
 4. Start the GUI server and follow step 3 of General notes to view activations: `python -m src.scripts.gui_server --config configs/features/large_v3_l1_sae.json --from_disk`
 
-# Training an L1-regularized autoencoder on Whisper Large sound effect activations
+# Training a TopK autoencoder on Whisper Large sound effect activations
 [Gong et al. 2023](https://www.isca-archive.org/interspeech_2023/gong23d_interspeech.pdf) demonstrated that unlike most ASR models, Whisper Large encodes information about background noise deep into its intermediate representation. Following the paper, we train on the [AudioSet](https://research.google.com/audioset/) dataset and test on [ESC-50](https://github.com/karolpiczak/ESC-50). I found that L1-regularized SAE training to be unstable, so I trained a TopK one.
 
 1. Download the AudioSet and ESC-50 datasets: `python -m src.scripts.download_audio_datasets --dataset audioset; python -m src.scripts.download_audio_datasets --dataset esc-50`
